@@ -26,6 +26,7 @@ subprocess.run(['clang-21','-std=c11','-O2','-Wall','-Wextra','-Werror','-DNPS64
 env=dict(os.environ,VK_ICD_FILENAMES='/usr/share/vulkan/icd.d/lvp_icd.x86_64.json',
     VK_INSTANCE_LAYERS='VK_LAYER_KHRONOS_validation',VK_LAYER_ENABLES='VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT')
 env.pop('NPS64_TILE_RECORD',None)
+env.pop('NPS64_TILE_COMPILE_ONLY',None)
 with (out/'host.log').open('w') as log:
     subprocess.run([str(out/'host')],env=env,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=90)
 log=(out/'host.log').read_text()

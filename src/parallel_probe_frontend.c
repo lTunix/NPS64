@@ -45,7 +45,7 @@ static void draw(unsigned selected,const unsigned results[PARALLEL_PROBE_CASES],
     uint32_t *fb=platform_framebuffer();
     for(unsigned i=0;i<SCREEN_W*SCREEN_H;i++)fb[i]=0xff102030u;
 #ifdef NPS64_PARALLEL_TILE_PROBE
-    platform_text(40,30,"NPS64 00.55 - ParaLLEl: captura real de tiles",0xffffffff,2);
+    platform_text(40,30,"NPS64 00.56 - ParaLLEl: captura real de tiles",0xffffffff,2);
     platform_text(40,80,"Despacho aislado del bloqueo 331. Empezar con el caso 2 (64 lanes).",0xffa0c0e0u,1);
 #else
     platform_text(40,30,"NPS64 00.52 - ParaLLEl: prueba de compute",0xffffffff,2);
@@ -72,7 +72,8 @@ int main(void) {
 #ifdef NPS64_PARALLEL_TILE_PROBE
     mkdir("/data/NPS64-Parallel",0777);
     nps64_log_init("/data/NPS64-Parallel/tile-probe.log");
-    report("NPS64 00.55 ORIGINAL TILE CAPTURE; isolated post-hang inputs; no ROM/core");
+    setenv("NPS64_TILE_COMPILER_TRACE","1",1);
+    report("NPS64 00.56 ORIGINAL TILE CAPTURE; isolated post-hang inputs; no ROM/core");
 #else
     nps64_log_init("/data/NPS64/parallel-probe.log");
     report("NPS64 00.52 PARALLEL COMPUTE GATE; manual cases; no ROM/core");

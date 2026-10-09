@@ -1,0 +1,3 @@
+FROM nps64-gpu-builder:local
+RUN apt-get update && apt-get install -y --no-install-recommends libdrm-dev libelf-dev libudev-dev && rm -rf /var/lib/apt/lists/*
+# Native RADV/ACO + AMD drm-shim compile GFX7 ISA. This does not emulate PS4.

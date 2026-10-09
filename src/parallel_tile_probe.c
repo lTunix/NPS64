@@ -148,6 +148,12 @@ static int prepare_pipeline(ParallelComputeProbe *p,unsigned index){
 int parallel_probe_run(ParallelComputeProbe *p,unsigned index,unsigned repeats) {
     if(!p||p->failed||index>=PARALLEL_PROBE_CASES||!repeats||repeats>PARALLEL_PROBE_REPEATS)return 1;
     if(!p->pipelines[index]&&prepare_pipeline(p,index))return 1;
+#ifndef __ORBIS__
+    /* drm-shim can compile AMD ISA but cannot execute or validate pixels. */
+    if(getenv("NPS64_TILE_COMPILE_ONLY")){
+        report(p,"COMPILE ONLY case=%u complete; no GPU dispatch or output validation",index);return 0;
+    }
+#endif
     uint32_t *expected=malloc(TOTAL_BYTES);if(!expected)return failure(p,"reference allocation",VK_ERROR_OUT_OF_HOST_MEMORY);
     memset(expected,0xcd,TOTAL_BYTES);
     for(unsigned i=0;i<5;i++)memset((char*)expected+i*SLOT_BYTES,0,sizes[i]);

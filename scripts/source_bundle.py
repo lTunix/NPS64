@@ -5,6 +5,7 @@ root=Path('/work');base=root/'out/NPS64-00.07-source.tar.gz';output=root/'out/NP
 if os.environ.get('NPS64_SOURCE_VERSION'):
  output=root/('out/NPS64-'+os.environ['NPS64_SOURCE_VERSION']+'-source.tar.gz')
 overlays=['vendor/gpu/mesa-26.0.8/src/amd/common/ac_ps4_drm.c',
+          'vendor/gpu/mesa-26.0.8/src/amd/vulkan/radv_pipeline_compute.c',
           'vendor/gpu/mesa-26.0.8/src/amd/vulkan/radv_cmd_buffer.c',
           'vendor/gpu/mesa-26.0.8/src/amd/common/ac_gpu_info.c']
 current=json.loads((root/'sources.lock.json').read_text());reuse=False
@@ -28,6 +29,6 @@ with tarfile.open(str(output),'w:gz',compresslevel=6) as out:
  else:
   for name in ['vendor/parallel-n64','vendor/OpenOrbis/src/modules','vendor/OpenOrbis/.nps64-revision','vendor/gpu','reference/DolphinPS4']:
    out.add(root/name,arcname=name,filter=keep)
- for name in ['README.md','TODO.md','LICENSE','Dockerfile','Dockerfile.gpu','.dockerignore','.gitignore','.gitattributes','sources.lock.json','scripts','src','docs','tests','assets']:
+ for name in ['README.md','TODO.md','LICENSE','Dockerfile','Dockerfile.gpu','Dockerfile.radv-compiler','.dockerignore','.gitignore','.gitattributes','sources.lock.json','scripts','src','docs','tests','assets']:
   out.add(root/name,arcname=name,filter=keep)
 print('Fuentes correspondientes: '+str(output.relative_to(root)))

@@ -67,6 +67,7 @@ EOF
 
 # The PS4 implementation of the amdgpu kernel interface lives in this repo.
 python3 scripts/patch_gpu_driver.py "$HERE/../port/mesa/ac_ps4_drm.c" "$MESA/src/amd/common/ac_ps4_drm.c"
+python3 scripts/patch_tile_compiler_trace.py "$MESA/src/amd/vulkan/radv_pipeline_compute.c"
 
 if [ "${1:-}" = setup ] || [ ! -f "$build/build.ninja" ]; then
     rm -rf "$build"

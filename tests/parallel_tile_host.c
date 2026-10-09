@@ -12,5 +12,7 @@ int main(void){
     unsigned repeats=getenv("NPS64_TILE_RECORD")?1:PARALLEL_PROBE_REPEATS;
     for(unsigned i=0;i<cases;i++)if(parallel_probe_run(probe,i,repeats))return 1;
     parallel_probe_close(probe);
-    puts("PASS isolated original tile capture; host only, not PS4 stability");return 0;
+    puts(getenv("NPS64_TILE_COMPILE_ONLY")?
+         "PASS AMD compilation only; no GPU execution or pixel validation":
+         "PASS isolated original tile capture; host only, not PS4 stability");return 0;
 }
