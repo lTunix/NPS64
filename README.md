@@ -11,6 +11,8 @@ Repositorio: [lTunix/NPS64](https://github.com/lTunix/NPS64).
 `main` conserva la version CPU; las pruebas de ParaLLEl-RDP se realizan en
 `experimental/parallel-rdp-ps4`. Ver [ramas y preparacion del clon](docs/REPOSITORY.md).
 
+En esta rama, seguir el [plan de pruebas ParaLLEl-RDP](docs/PARALLEL-RDP-PLAN.md).
+
 Los apartados siguientes son historial de las pruebas anteriores.
 
 > 00.19 experimental: variante de rasterizado sin texturas, con selección conservadora por lote y comparación completa de memoria en PC. Ver [prueba Vulkan](docs/VULKAN-00.19-TEST.md). Pendiente validación en PS4; 00.13 CPU sigue siendo la versión estable.
