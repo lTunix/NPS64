@@ -1,3 +1,15 @@
+## Prioridad experimental: ParaLLEl 00.52
+
+- [x] Crear app PS4 independiente sin ROM ni core, conservando CPU51.
+- [x] Implementar siete casos: buffers, 1D/2D/3D, LDS, atomicos, barreras e indirectos.
+- [x] Validar 448 fences y 896 despachos, memoria completa y guardas en Lavapipe.
+- [x] Compilar PKG PS4 independiente y verificar sus 28 controles.
+- [ ] Confirmar cada caso en PS4 real; recoger parallel-probe.log y boot.log.
+- [ ] Ampliar pruebas de texturas compute y reproducir cargas RDP originales.
+- [ ] Integrar juegos solo tras validar estabilidad, fidelidad y rendimiento.
+
+Ver [instrucciones 00.52](docs/PARALLEL-00.52-COMPUTE.md).
+
 ## Prioridad activa: CPU 00.51, temporizacion y rasterizado
 
 - [x] Analizar por separado las sesiones CPU50 de GoldenEye, Tennis y Mario.

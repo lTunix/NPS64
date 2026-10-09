@@ -12,6 +12,7 @@ Repositorio: [lTunix/NPS64](https://github.com/lTunix/NPS64).
 `experimental/parallel-rdp-ps4`. Ver [ramas y preparacion del clon](docs/REPOSITORY.md).
 
 En esta rama, seguir el [plan de pruebas ParaLLEl-RDP](docs/PARALLEL-RDP-PLAN.md).
+Primer paquete independiente: [00.52, pruebas compute para PS4](docs/PARALLEL-00.52-COMPUTE.md).
 
 Los apartados siguientes son historial de las pruebas anteriores.
 

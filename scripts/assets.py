@@ -1,7 +1,9 @@
 from pathlib import Path
+import os
 from PIL import Image, ImageDraw, ImageFont
 
 root = Path('/work')
+stage = Path(os.environ.get('NPS64_STAGE_DIR', '/work/build/stage'))
 font_path = '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf'
 font = ImageFont.truetype(font_path, 14)
 data = bytearray()
@@ -16,4 +18,4 @@ d.rounded_rectangle((46, 46, 466, 466), 48, outline='#48dac1', width=8)
 d.text((68, 177), 'NPS64', font=ImageFont.truetype(font_path, 98), fill='#f5f7ff')
 d.text((80, 315), 'NINTENDO 64 / PS4', font=ImageFont.truetype(font_path, 26), fill='#48dac1')
 d.text((139, 387), 'EXPERIMENTAL', font=ImageFont.truetype(font_path, 24), fill='#9baabd')
-im.save(root / 'build/stage/sce_sys/icon0.png')
+im.save(stage / 'sce_sys/icon0.png')

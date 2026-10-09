@@ -1,7 +1,7 @@
 """Ensure GPU constructors cannot run before the frontend, and use dlmalloc."""
-import struct, sys
+import struct, sys, os
 from pathlib import Path
-p=Path('/work/build/nps64.elf');b=p.read_bytes()
+p=Path(os.environ.get('NPS64_ELF_DIR','/work/build'))/'nps64.elf';b=p.read_bytes()
 shoff=struct.unpack_from('<Q',b,40)[0];ents,n,strings=struct.unpack_from('<HHH',b,58)
 sections=[struct.unpack_from('<IIQQQQIIQQ',b,shoff+i*ents) for i in range(n)]
 ss=sections[strings];names=b[ss[4]:ss[4]+ss[5]]

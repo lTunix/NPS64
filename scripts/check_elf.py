@@ -1,8 +1,8 @@
 """Check ELF/OELF load segments after create-fself (DolphinPS4 launch issue)."""
-import struct
+import struct, os
 from pathlib import Path
 for name in ('nps64.elf', 'nps64.oelf'):
-    data = (Path('/work/build') / name).read_bytes()
+    data = (Path(os.environ.get('NPS64_ELF_DIR','/work/build')) / name).read_bytes()
     assert data[:4] == b'\x7fELF' and data[4:6] == b'\x02\x01', f'{name}: not ELF64 LE'
     assert struct.unpack_from('<H', data, 18)[0] == 62, 'not x86_64'
     offset = struct.unpack_from('<Q', data, 32)[0]

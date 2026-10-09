@@ -4,8 +4,11 @@ cd /work
 sdk="${OO_PS4_TOOLCHAIN:-/work/toolchain/OpenOrbis/PS4Toolchain}"
 export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 tools="$sdk/bin/linux"
-stage=/work/build/stage
-content=IV0000-NPSX00064_00-NPS64PS400000000
+stage="${NPS64_STAGE_DIR:-/work/build/stage}"
+output="${NPS64_PACKAGE_OUTPUT:-/work/out}"
+content="${NPS64_CONTENT_ID:-IV0000-NPSX00064_00-NPS64PS400000000}"
+title_id="${NPS64_TITLE_ID:-NPSX00064}"
+mkdir -p "$output"
 sfo="$stage/sce_sys/param.sfo"
 rm -f "$sfo"
 "$tools/PkgTool.Core" sfo_new "$sfo"
@@ -17,8 +20,8 @@ entry CATEGORY Utf8 4 gd
 entry CONTENT_ID Utf8 48 "$content"
 entry DOWNLOAD_DATA_SIZE Integer 4 0
 entry SYSTEM_VER Integer 4 0
-entry TITLE Utf8 128 'NPS64 - Experimental'
-entry TITLE_ID Utf8 12 NPSX00064
+entry TITLE Utf8 128 "${NPS64_TITLE:-NPS64 - Experimental}"
+entry TITLE_ID Utf8 12 "$title_id"
 entry VERSION Utf8 8 "${NPS64_VERSION:-00.13}"
 cp -a assets/font.bin "$stage/"
 cp LICENSE "$stage/LICENSE.txt"
@@ -33,5 +36,5 @@ python3 /work/scripts/check_stage.py "$stage"
 cd "$stage"
 rm -f pkg.gp4
 "$tools/create-gp4" -out pkg.gp4 --content-id="$content" --files 'eboot.bin font.bin LICENSE.txt CREDITS.txt FONT-LICENSE.txt sce_sys/param.sfo sce_sys/icon0.png sce_module/libc.prx sce_module/libSceFios2.prx sce_sys/about/right.sprx'
-"$tools/PkgTool.Core" pkg_build pkg.gp4 /work/out
+"$tools/PkgTool.Core" pkg_build pkg.gp4 "$output"
 rm -f pkg.gp4

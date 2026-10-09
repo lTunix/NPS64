@@ -24,6 +24,12 @@ un DISPATCH solo demuestra que el procesador de comandos lo alcanzo;
 no demuestra que el shader haya terminado. Se deben usar fences y barreras
 apropiados para atribuir el bloqueo a una operacion concreta.
 
+## Primer entregable: 00.52
+
+La app independiente implementa siete casos compute y pasa 448 envios en
+Lavapipe con validacion Vulkan y sincronizacion. El PKG no carga juegos;
+la confirmacion PS4 sigue pendiente. Ver [instrucciones](PARALLEL-00.52-COMPUTE.md).
+
 ## Bloque 1: pruebas minimas de compute
 
 - [ ] Revisar y reutilizar `tests/gpu_compute_probe.*` y las herramientas de captura.

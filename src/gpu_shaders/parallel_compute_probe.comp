@@ -1,0 +1,29 @@
+#version 450
+layout(local_size_x_id=0, local_size_y_id=2, local_size_z_id=3) in;
+layout(constant_id=1) const uint mode=0;
+layout(set=0,binding=0,std430) buffer Output { uint words[]; } output_data;
+layout(push_constant) uniform Parameters { uint phase; uint salt; } parameters;
+shared uint mask;
+void main() {
+    uvec3 extent=gl_NumWorkGroups*gl_WorkGroupSize;
+    uint index=gl_GlobalInvocationID.x+extent.x*(gl_GlobalInvocationID.y+
+               extent.y*gl_GlobalInvocationID.z);
+    if(mode==1) {
+        uint lane=gl_LocalInvocationIndex;
+        if(lane==0)mask=0;
+        barrier();
+        if(lane<32)atomicOr(mask,1u<<lane);
+        barrier();
+        uint remaining=mask,count=0;
+        while(remaining!=0) {
+            int bit=findLSB(remaining);
+            remaining &= ~(1u<<bit);
+            count++;
+        }
+        output_data.words[index]=count^parameters.salt;
+    } else if(mode==2 && parameters.phase==1) {
+        output_data.words[index]^=0x5a5a5a5au;
+    } else {
+        output_data.words[index]=index^0x64a5u^parameters.salt;
+    }
+}
