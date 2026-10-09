@@ -1,10 +1,12 @@
 /* Original ParaLLEl tile stage with externally supplied PS4 capture inputs.
- * Case 0 preserves the 32-lane shader; case 1 changes only local size to 64.
+ * Cases 0/1 preserve the original shader at 32/64 lanes. Cases 2/3 isolate
+ * shared-memory and atomic operations; case 3 is ONLY valid for this fixture.
  * Host reference compares every mask word, both inputs and allocation guards.
  * Captured ROM-derived data is generated under ignored build/, never in Git. */
 #include <vulkan/vulkan.h>
 #include "parallel_compute_probe.h"
 #include "parallel_tile_data.h"
+#include "parallel_tile_direct_data.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -22,10 +24,12 @@ struct ParallelComputeProbe {
  VkDescriptorSetLayout set_layout; VkPipelineLayout layout;
  VkDescriptorPool descriptors; VkDescriptorSet set;
  VkCommandPool commands; VkCommandBuffer cmd; VkFence fence;
- VkShaderModule shaders[2]; VkPipeline pipelines[PARALLEL_PROBE_CASES]; unsigned failed;
+ VkShaderModule shaders[PARALLEL_PROBE_CASES]; VkPipeline pipelines[PARALLEL_PROBE_CASES]; unsigned failed;
 };
 const char *parallel_probe_case_name(unsigned index) {
- return index==0?"RDP original / 32 lanes":index==1?"RDP original / 64 lanes (candidate)":"invalid";
+ static const char *names[]={"RDP original / 32 lanes","RDP original / 64 lanes (candidate)",
+  "Direct tiles / no shared LDS / atomics","Direct tiles / stores / one-group fixture only"};
+ return index<PARALLEL_PROBE_CASES?names[index]:"invalid";
 }
 static void report(ParallelComputeProbe *p,const char *format,...) {
     char line[512];va_list args;va_start(args,format);
@@ -128,18 +132,19 @@ int parallel_probe_open(ParallelComputeProbe **output,ParallelProbeReport callba
     report(p,"READY isolated first tile stage: 320x239, one primitive; original 32 vs candidate 64");return 0;
 }
 static int prepare_pipeline(ParallelComputeProbe *p,unsigned index){
-    const uint32_t *codes[2]={tile_spv32,tile_spv64};const size_t bytes[2]={sizeof(tile_spv32),sizeof(tile_spv64)};
+    const uint32_t *codes[]={tile_spv32,tile_spv64,tile_spv_direct_atomic,tile_spv_direct_store};
+    const size_t bytes[]={sizeof(tile_spv32),sizeof(tile_spv64),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_store)};
     unsigned i=index;
     {
         VkShaderModuleCreateInfo smci={.sType=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,.codeSize=bytes[i],.pCode=codes[i]};
         report(p,"CREATE shader case=%u bytes=%zu",i,bytes[i]);
         TRY(vkCreateShaderModule(p->device,&smci,NULL,&p->shaders[i]));
         VkSpecializationMapEntry entries[7];for(unsigned j=0;j<7;j++)entries[j]=(VkSpecializationMapEntry){j,4*j,4};
-        uint32_t constants[]={i?64:32,8,8,256,1024,32768,1};
+        uint32_t constants[]={i==1?64:32,8,8,256,1024,32768,1};
         VkSpecializationInfo spec={7,entries,sizeof(constants),constants};
         VkComputePipelineCreateInfo pci={.sType=VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
           .stage={.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,.stage=VK_SHADER_STAGE_COMPUTE_BIT,.module=p->shaders[i],.pName="main",.pSpecializationInfo=&spec},.layout=p->layout};
-        report(p,"COMPILE pipeline case=%u local=%u begin",i,i?64:32);
+        report(p,"COMPILE pipeline case=%u local=%u begin",i,i==1?64:32);
         TRY(vkCreateComputePipelines(p->device,VK_NULL_HANDLE,1,&pci,NULL,&p->pipelines[i]));
         report(p,"COMPILE pipeline case=%u complete",i);
     }
@@ -161,7 +166,7 @@ int parallel_probe_run(ParallelComputeProbe *p,unsigned index,unsigned repeats) 
     memcpy((char*)expected+SLOT_BYTES,tile_scissor,sizeof(tile_scissor));
     memcpy((char*)expected+3*SLOT_BYTES,tile_expected_mask,sizeof(tile_expected_mask));
     memcpy((char*)expected+4*SLOT_BYTES,tile_expected_coarse,sizeof(tile_expected_coarse));
-    report(p,"BEGIN case=%u %s groups=1x5x%u repeats=%u",index,parallel_probe_case_name(index),index?4:8,repeats);
+    report(p,"BEGIN case=%u %s groups=1x5x%u repeats=%u",index,parallel_probe_case_name(index),index==1?4:8,repeats);
     for(unsigned r=0;r<repeats;r++){
         for(unsigned i=0;i<5;i++)memcpy(p->mapped[i],(char*)expected+i*SLOT_BYTES,SLOT_BYTES);
         memset(p->mapped[3],0,sizes[3]);memset(p->mapped[4],0,sizes[4]);
@@ -172,7 +177,7 @@ int parallel_probe_run(ParallelComputeProbe *p,unsigned index,unsigned repeats) 
         vkCmdBindPipeline(p->cmd,VK_PIPELINE_BIND_POINT_COMPUTE,p->pipelines[index]);
         vkCmdBindDescriptorSets(p->cmd,VK_PIPELINE_BIND_POINT_COMPUTE,p->layout,0,1,&p->set,0,NULL);
         const uint32_t registers[]={320,239,1};vkCmdPushConstants(p->cmd,p->layout,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(registers),registers);
-        vkCmdDispatch(p->cmd,1,5,index?4:8);
+        vkCmdDispatch(p->cmd,1,5,index==1?4:8);
         VkMemoryBarrier download={.sType=VK_STRUCTURE_TYPE_MEMORY_BARRIER,.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT,.dstAccessMask=VK_ACCESS_HOST_READ_BIT};
         vkCmdPipelineBarrier(p->cmd,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,1,&download,0,NULL,0,NULL);
         TRY(vkEndCommandBuffer(p->cmd));
@@ -208,7 +213,7 @@ void parallel_probe_close(ParallelComputeProbe *p) {
         for(unsigned i=0;i<PARALLEL_PROBE_CASES;i++)if(p->pipelines[i])vkDestroyPipeline(p->device,p->pipelines[i],NULL);
         if(p->fence)vkDestroyFence(p->device,p->fence,NULL);
         if(p->commands)vkDestroyCommandPool(p->device,p->commands,NULL);
-        for(unsigned i=0;i<2;i++)if(p->shaders[i])vkDestroyShaderModule(p->device,p->shaders[i],NULL);
+        for(unsigned i=0;i<PARALLEL_PROBE_CASES;i++)if(p->shaders[i])vkDestroyShaderModule(p->device,p->shaders[i],NULL);
         if(p->descriptors)vkDestroyDescriptorPool(p->device,p->descriptors,NULL);
         if(p->layout)vkDestroyPipelineLayout(p->device,p->layout,NULL);
         if(p->set_layout)vkDestroyDescriptorSetLayout(p->device,p->set_layout,NULL);

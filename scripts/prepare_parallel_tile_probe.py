@@ -7,6 +7,7 @@ import hashlib,json,os,re,struct,subprocess,sys
 
 root=Path('/work');capture=Path(sys.argv[1] if len(sys.argv)>1 else '/work/logs')
 out=root/'build/parallel-tile-probe';out.mkdir(parents=True,exist_ok=True)
+subprocess.run([sys.executable,str(root/'scripts/prepare_tile_direct_probe.py')],check=True)
 includes=root/'vendor/parallel-n64/mupen64plus-video-paraLLEl/parallel-rdp/parallel-rdp/shaders'
 report=(capture/'gpu-hang.txt').read_text()
 assert 'memory 0x5 done' in report, 'Expected tile-stage marker 5 capture'
@@ -93,6 +94,6 @@ with (out/'host.log').open('w') as log:
     subprocess.run([str(out/'host')],env=env,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=90)
 log=(out/'host.log').read_text()
 assert 'VUID-' not in log and 'Validation Error' not in log
-assert log.count('COMPLETE case=')==128 and log.count('PASS case=')==2
+assert log.count('COMPLETE case=')==256 and log.count('PASS case=')==4
 (out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
-print('PASS original tile32 and candidate tile64: 128 fences; all masks, inputs and guards exact; no Vulkan validation errors; host only')
+print('PASS original tile32/tile64 and direct diagnostic variants: 256 fences; all masks, inputs and guards exact; no Vulkan validation errors; host only')
