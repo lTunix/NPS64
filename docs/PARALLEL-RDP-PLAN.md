@@ -28,7 +28,13 @@ apropiados para atribuir el bloqueo a una operacion concreta.
 
 La app independiente implementa siete casos compute y pasa 448 envios en
 Lavapipe con validacion Vulkan y sincronizacion. El PKG no carga juegos;
-la confirmacion PS4 sigue pendiente. Ver [instrucciones](PARALLEL-00.52-COMPUTE.md).
+el log de PS4 confirma los siete casos, 448 envios y 896 despachos completos.
+Ver [instrucciones](PARALLEL-00.52-COMPUTE.md).
+
+00.53 integra juegos completos y compara siete imagenes de Mario, cabeza y
+menu, sobre el mismo stream RDP: error maximo 1 por canal. No confirma aun
+rendimiento ni estabilidad del juego completo en PS4. Ver
+[entrega experimental](PARALLEL-00.53-GAMES.md).
 
 ## Bloque 1: pruebas minimas de compute
 
@@ -45,8 +51,8 @@ Un triangulo graphics o una prueba exitosa en PC no cumple este criterio.
 
 ## Bloque 2: reproducir RDP fuera del juego
 
-- [ ] Capturar comandos RDP y estado de memoria de escenas pequenas de Mario 64.
-- [ ] Reproducir identica entrada con Angrylion y ParaLLEl-RDP.
+- [x] Capturar comandos RDP y estado de memoria de escenas pequenas de Mario 64.
+- [x] Reproducir identica entrada con Angrylion y ParaLLEl-RDP.
 - [ ] Reducir el primer bloqueo a una captura y un shader concretos.
 - [ ] Registrar por etapa preparacion, binning, rasterizado, resolve y VI.
 - [ ] Verificar el arreglo sobre capturas distintas y sesiones consecutivas.
@@ -66,7 +72,7 @@ cualquier diferencia conocida queda documentada con una reproduccion.
 
 ## Bloque 4: integracion continua
 
-- [ ] Integrar ParaLLEl-RDP y un RSP compatible en un build experimental.
+- [x] Integrar ParaLLEl-RDP y un RSP compatible en un build experimental.
 - [ ] Validar RDRAM compartida, lecturas CPU de framebuffer y sincronizacion.
 - [ ] Revisar presentacion sin lectura GPU->CPU obligatoria de cada cuadro.
 - [ ] Validar inicio, cambios de escena, pausa, cierre y multiples sesiones.

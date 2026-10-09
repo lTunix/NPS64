@@ -53,6 +53,9 @@ DEVICE_FUNCTIONS(DECLARE)
 #undef DECLARE
 static PFN_vkDestroyInstance fn_DestroyInstance;
 static PFN_vkGetPhysicalDeviceMemoryProperties fn_GetPhysicalDeviceMemoryProperties;
+#if defined(__ORBIS__) && defined(NPS64_PARALLEL_GAME)
+static bool retained_ps4_device;
+#endif
 static bool check(VkResult result,const char *operation) {
     if(result==VK_SUCCESS)return true;
     nps64_log("[gpu] %s failed VkResult=%d\n",operation,result);g.failed=true;return false;
@@ -81,6 +84,9 @@ static void set_image(void *unused,const struct retro_vulkan_image *image,uint32
     if(count)memcpy(g.waits,semaphores,count*sizeof(*semaphores));
 }
 bool nps64_gpu_begin(void) {
+#if defined(__ORBIS__) && defined(NPS64_PARALLEL_GAME)
+    if(retained_ps4_device){nps64_log("[gpu] device retained; restart app for another Vulkan session\n");return false;}
+#endif
 #if defined(__ORBIS__) && !defined(NPS64_GPU_EXPERIMENTAL)
     /* Defense in depth: never initialize GNM on console while quarantined. */
     nps64_log("[gpu] PS4 Vulkan disabled: unresolved system-wide GPU hang\n");
@@ -88,7 +94,10 @@ bool nps64_gpu_begin(void) {
 #endif
 #if defined(__ORBIS__) || defined(NPS64_TEST_PS4_GPU_PROFILE)
     /* Host can select the upstream shader for exact image comparisons. */
-#ifdef __ORBIS__
+#if defined(NPS64_PARALLEL_GAME)
+    /* Preserve original ParaLLEl shaders; old diagnostic replacements stay off. */
+    if(setenv("NPS64_RDP_DIRECT_BINNING","0",1) || setenv("NPS64_RDP_COLOR_ONLY","0",1))return false;
+#elif defined(__ORBIS__)
     if(setenv("NPS64_RDP_DIRECT_BINNING","1",1))return false;
     if(setenv("NPS64_RDP_COLOR_ONLY","1",1))return false;
 #else
@@ -108,7 +117,11 @@ bool nps64_gpu_begin(void) {
     }
     nps64_log("[gpu] PS4 RADV progress markers enabled\n");
     nps64_log("[gpu] conservative compute: serialized setup and single-flight submissions\n");
+#ifdef NPS64_PARALLEL_GAME
+    nps64_log("[gpu] original ParaLLEl-RDP shaders; replacement binning/color=off; subgroup=0 small_types=0\n");
+#else
     nps64_log("[gpu] PS4 compute profile: ubershader=1 direct dispatch; subgroup=0 small_types=0\n");
+#endif
 #endif
 #ifdef __ORBIS__
     extern void nps64_gpu_static_init(void);
@@ -279,6 +292,13 @@ void nps64_gpu_destroy_context(void) {
 }
 void nps64_gpu_close(void) {
     nps64_gpu_destroy_context();
+#if defined(__ORBIS__) && defined(NPS64_PARALLEL_GAME)
+    if(g.context.device){
+        retained_ps4_device=true;
+        nps64_log("[gpu] PS4 device retained until process exit; no vkDestroyDevice\n");
+        return;
+    }
+#endif
     if(g.context.device && fn_DestroyDevice) {
         if(fn_DeviceWaitIdle)fn_DeviceWaitIdle(g.context.device);
         free_buffer();

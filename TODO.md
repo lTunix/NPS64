@@ -1,10 +1,25 @@
-## Prioridad experimental: ParaLLEl 00.52
+## Prioridad experimental: ParaLLEl 00.53
+
+- [x] Confirmar en PS4 las siete pruebas compute de 00.52: 448 envios, 896 despachos.
+- [x] Integrar juegos completos con Ari64, CXD4 y ParaLLEl-RDP original.
+- [x] Separar app, configuracion, partidas y logs; conservar biblioteca y CPU51.
+- [x] Capturar comandos RDP y comparar imagenes con Angrylion antes de importar resultados GPU.
+- [x] Validar independencia de referencia con framebuffer y cobertura GPU corruptos sinteticos.
+- [x] Comparar siete imagenes de cabeza/menu Mario: diferencia maxima 1 por canal.
+- [x] Construir PKG 00.53, verificar 28 controles e identidad; CPU51 sin cambios.
+- [ ] Confirmar juegos completos, cambios de escena y cierre en PS4 real.
+- [ ] Ampliar comparaciones a castillo, particulas, Zelda, GoldenEye y Tennis.
+- [ ] Medir FPS y audio en PS4; optimizar lecturas GPU/CPU y sincronizacion segun resultados.
+
+Ver [instrucciones 00.53](docs/PARALLEL-00.53-GAMES.md).
+
+## Historial experimental: ParaLLEl 00.52
 
 - [x] Crear app PS4 independiente sin ROM ni core, conservando CPU51.
 - [x] Implementar siete casos: buffers, 1D/2D/3D, LDS, atomicos, barreras e indirectos.
 - [x] Validar 448 fences y 896 despachos, memoria completa y guardas en Lavapipe.
 - [x] Compilar PKG PS4 independiente y verificar sus 28 controles.
-- [ ] Confirmar cada caso en PS4 real; recoger parallel-probe.log y boot.log.
+- [x] Confirmar cada caso en PS4 real; recoger parallel-probe.log y boot.log.
 - [ ] Ampliar pruebas de texturas compute y reproducir cargas RDP originales.
 - [ ] Integrar juegos solo tras validar estabilidad, fidelidad y rendimiento.
 

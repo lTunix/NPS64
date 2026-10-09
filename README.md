@@ -12,7 +12,10 @@ Repositorio: [lTunix/NPS64](https://github.com/lTunix/NPS64).
 `experimental/parallel-rdp-ps4`. Ver [ramas y preparacion del clon](docs/REPOSITORY.md).
 
 En esta rama, seguir el [plan de pruebas ParaLLEl-RDP](docs/PARALLEL-RDP-PLAN.md).
-Primer paquete independiente: [00.52, pruebas compute para PS4](docs/PARALLEL-00.52-COMPUTE.md).
+Paquete experimental actual: [00.53, juegos completos con ParaLLEl original](docs/PARALLEL-00.53-GAMES.md).
+Las siete pruebas compute de [00.52](docs/PARALLEL-00.52-COMPUTE.md) fueron confirmadas en PS4.
+Las comparaciones locales de Mario (cabeza y menu) usan el mismo stream RDP
+con Angrylion y ParaLLEl; estabilidad y FPS del juego completo en PS4 pendientes.
 
 Los apartados siguientes son historial de las pruebas anteriores.
 

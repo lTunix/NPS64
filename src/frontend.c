@@ -27,7 +27,10 @@ static unsigned char hle_pixels[256*256*4];
 #ifndef DATA_ROOT
 #define DATA_ROOT "/data/NPS64"
 #endif
-static const char games_dir[]=DATA_ROOT "/games", saves_dir[]=DATA_ROOT "/saves", system_dir[]=DATA_ROOT "/system";
+#ifndef NPS64_GAMES_ROOT
+#define NPS64_GAMES_ROOT DATA_ROOT "/games"
+#endif
+static const char games_dir[]=NPS64_GAMES_ROOT, saves_dir[]=DATA_ROOT "/saves", system_dir[]=DATA_ROOT "/system";
 static Game games[512],current;
 static size_t game_count,selected;
 static Input pads[4];
@@ -35,12 +38,16 @@ static bool running,paused,quit_requested,options_dirty,core_shutdown;
 static unsigned slot,pause_selected,theme;
 static bool widescreen;
 static bool input_test;
-#ifdef NPS64_CPU_RDP_PGO
+#if defined(NPS64_CPU_RDP_PGO) || defined(NPS64_PARALLEL_GAME)
 static unsigned diagnostic_workers=6;
 #else
 static unsigned diagnostic_workers=4;
 #endif
+#ifdef NPS64_PARALLEL_GAME
+static bool diagnostic_hle=false; /* Same low-level RSP as paired image tests. */
+#else
 static bool diagnostic_hle=true;
+#endif
 static bool filtered_vi=true;
 static bool use_jit,use_gpu,native_rgba;
 static unsigned requested_gpu=1;
@@ -163,6 +170,28 @@ static void video_refresh(const void *data,unsigned width,unsigned height,size_t
 void nps64_hle_cpu_video(const void *data,unsigned width,unsigned height,size_t pitch){video_refresh(data,width,height,pitch);}
 #endif
 #include "software_scaler.h"
+#ifdef NPS64_PARALLEL_CAPTURE
+/* Native VI pixels before scaling or HUD, for paired host renderer runs. */
+int nps64_parallel_capture(const char *path) {
+    if(!native_width||!native_height||!native_frame)return 0;
+    FILE *f=fopen(path,"wb");if(!f)return 0;
+    fprintf(f,"P6\n%u %u\n255\n",native_width,native_height);
+    for(size_t i=0;i<(size_t)native_width*native_height;i++) {
+        unsigned char rgb[3];
+        if(native_format==RETRO_PIXEL_FORMAT_XRGB8888){
+            uint32_t c;memcpy(&c,native_frame+i*4,4);
+            rgb[0]=native_rgba?c:c>>16;rgb[1]=c>>8;rgb[2]=native_rgba?c>>16:c;
+        }else{
+            uint16_t c;memcpy(&c,native_frame+i*2,2);
+            int bits=native_format==RETRO_PIXEL_FORMAT_RGB565?6:5;
+            rgb[0]=((c>>(bits+5))&31)*255/31;
+            rgb[1]=((c>>5)&((1u<<bits)-1))*255/((1u<<bits)-1);rgb[2]=(c&31)*255/31;
+        }
+        if(fwrite(rgb,1,3,f)!=3){fclose(f);return 0;}
+    }
+    return fclose(f)==0;
+}
+#endif
 static void game_video_draw(void) {
     uint32_t *out=platform_framebuffer();
     if(!native_width || !native_height) {memset(out,0,SCREEN_W*SCREEN_H*4);return;}
@@ -518,6 +547,12 @@ static bool start_game(void) {
     notify(bad_save?"SRAM ilegible: archivo protegido. Respaldalo y retiralo via FTP":"L3 + R3: pausa / estados / volver a biblioteca"); return true;
 }
 static void stop_game(void) {
+#if defined(__ORBIS__) && defined(NPS64_PARALLEL_GAME)
+    if(use_gpu&&nps64_gpu_failed()){
+        nps64_log("[gpu] failed device; skipping blocking core/GPU teardown, exiting app\n");
+        running=false;paused=false;quit_requested=true;platform_audio_clear();return;
+    }
+#endif
 #ifdef NPS64_HLE_GAME
     hle_continuous=false;hle_frame_ready=false;hle_preview=false;memset(hle_scanouts,0,sizeof(hle_scanouts));hle_display_vi.width=0;
     nps64_hle_geometry_capture_textures(0);
@@ -550,7 +585,11 @@ static void menu_draw(void) {
     rect(0,0,SCREEN_W,SCREEN_H,0xff101e30);
     rect(0,0,SCREEN_W,5,accent[theme]);
     platform_text(64,40,"NPS64",accent[theme],4);
+#ifdef NPS64_PARALLEL_GAME
+    platform_text(64,115,"PARALLEL 00.53   |   NINTENDO 64   |   PS4",0xffadbcd2,2);
+#else
     platform_text(64,115,"BIBLIOTECA     |     NINTENDO 64     |     PS4",0xffadbcd2,2);
+#endif
     if(input_test) {
         platform_text(64,190,"PRUEBA DEL MANDO - acciones de biblioteca suspendidas",accent[theme],2);
         platform_text(64,245,"X: jugar | Cuadrado: buscar ROMs | Circulo: volver",0xffeeeeee,2);
@@ -604,7 +643,9 @@ int main(void) {
     const char *dirs[]={DATA_ROOT,games_dir,saves_dir,system_dir};
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
     nps64_log_init(DATA_ROOT "/nps64.log");
-#if defined(NPS64_HLE_GAME)
+#if defined(NPS64_PARALLEL_GAME)
+    nps64_log("NPS64 00.53 ParaLLEl-RDP original / experimental game build\n");
+#elif defined(NPS64_HLE_GAME)
     nps64_log("NPS64 00.38 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
     nps64_log("NPS64 00.19 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
@@ -798,6 +839,15 @@ int main(void) {
                 core_elapsed=platform_time()-core_start;
                 if(core_frames<3) nps64_log("[run] frame=%llu end video=%d\n",(unsigned long long)core_frames,first_video);
                 core_frames++;
+#ifdef NPS64_PARALLEL_CAPTURE
+                /* Host-only acceleration to a supplied local comparison scene. */
+                if(core_frames==1&&getenv("NPS64_PARALLEL_LOAD_STATE")){
+                    size_t size=retro_serialize_size();void *data=malloc(size);
+                    FILE *f=fopen(getenv("NPS64_PARALLEL_LOAD_STATE"),"rb");
+                    if(!data||!f||fread(data,1,size,f)!=size||fgetc(f)!=EOF||!retro_unserialize(data,size)){fprintf(stderr,"Comparison checkpoint failed\n");exit(2);}
+                    fclose(f);free(data);nps64_log("[parallel-capture] host checkpoint loaded\n");
+                }
+#endif
 #ifdef NPS64_HLE_GAME
                 if(hle_continuous&&!core_shutdown){double gpu_start=platform_time();hle_game_frame();gpu_elapsed=platform_time()-gpu_start;}
                 int vi_finish=nps64_hle_cpu_vi_finish(!hle_continuous||!hle_frame_ready);

@@ -49,6 +49,10 @@ void platform_poll(Input pads[4]) {
         if(f>=400&&f<420)pads[0].joy=1u<<3;
         if((f>=500&&f<520)||(f>=600&&f<620))pads[0].joy=1u<<8;
     }
+    if(getenv("BENCH_PARALLEL_SM64")) {
+        if(f>=700&&f<740)pads[0].joy=1u<<3;
+        if((f>=900&&f<940)||(f>=1000&&f<1040))pads[0].joy=1u<<0;
+    }
     if(getenv("BENCH_ZELDA_MENU")) {
         if(f>=1500&&f<1560)pads[0].joy=1u<<3; /* title -> file selection */
     }
@@ -112,6 +116,32 @@ static void screenshot(unsigned frame) {
 bool platform_present(void) {
     if(hle_capture_pending&&!hle_capture_saved){screenshot(999);hle_capture_saved=true;}
     if(hle_capture_last){screenshot(1000);hle_capture_last=false;}
+#ifdef NPS64_PARALLEL_CAPTURE
+    const char *save_path=getenv("NPS64_PARALLEL_SAVE_STATE");
+    const char *save_vi=getenv("NPS64_PARALLEL_SAVE_VI");
+    if(save_path&&save_vi&&polls==200+(unsigned)atoi(save_vi)){
+        extern size_t retro_serialize_size(void);extern bool retro_serialize(void *,size_t);
+        size_t n=retro_serialize_size();void *data=malloc(n);FILE *out=fopen(save_path,"wb");
+        if(!data||!out||!retro_serialize(data,n)||fwrite(data,1,n,out)!=n)exit(2);
+        fclose(out);free(data);printf("CHECKPOINT frame=%u bytes=%zu\n",polls-200,n);
+    }
+    const char *capture_dir=getenv("NPS64_PARALLEL_CAPTURE_DIR");
+    const char *frames=getenv("NPS64_PARALLEL_CAPTURE_FRAMES");
+    if(capture_dir&&frames&&polls>200&&polls<200+limit) {
+        unsigned frame=polls-200;
+        for(const char *cursor=frames;*cursor;) {
+            char *end;unsigned target=(unsigned)strtoul(cursor,&end,10);
+            if(end==cursor)break;
+            if(target==frame) {
+                extern int nps64_parallel_capture(const char *);
+                char path[512];snprintf(path,sizeof(path),"%s/frame-%u.ppm",capture_dir,frame);
+                if(!nps64_parallel_capture(path)){fprintf(stderr,"Capture failed: %s\n",path);exit(2);}
+                printf("CAPTURE frame=%u VI=%08x origin=%08x width=%u count=%08x\n",frame,g_dev.vi.regs[0],g_dev.vi.regs[1],g_dev.vi.regs[2],g_dev.r4300.cp0.regs[9]);
+            }
+            cursor=*end==','?end+1:end;
+        }
+    }
+#endif
     double now=platform_time(),ms=(now-last_present)*1000; last_present=now; presents++;
     if(getenv("BENCH_CPU_PROFILE")&&polls>200&&polls<200+limit){
         printf("PROFILE frame=%u ms=%.6f vulkan=0\n",polls-200,ms);
