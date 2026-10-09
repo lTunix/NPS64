@@ -18,6 +18,8 @@ Las comparaciones locales de Mario (cabeza y menu) usan el mismo stream RDP
 con Angrylion y ParaLLEl. La prueba real de 00.53 vuelve a bloquear tiles
 antes del primer cuadro visible (envio 331). [00.54 aisla ese despacho](docs/PARALLEL-00.54-TILES.md);
 no es una correccion confirmada ni un nuevo paquete para jugar.
+00.54 se cierra al preparar pipelines en PS4; [00.55](docs/PARALLEL-00.55-INIT.md)
+separa la compilacion del caso elegido, amplia la pila del worker y registra cada etapa.
 
 Los apartados siguientes son historial de las pruebas anteriores.
 

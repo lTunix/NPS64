@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#ifdef NPS64_PARALLEL_TILE_PROBE
+#include <pthread.h>
+#endif
 extern void nps64_gpu_static_init(void);
 extern void nps64_boot_trace(const char *message);
 
@@ -16,11 +19,33 @@ static void report(const char *message) {
     /* Persist the last operation before a possible physical GPU stall. */
     nps64_boot_trace(message);
 }
+#ifdef NPS64_PARALLEL_TILE_PROBE
+typedef struct {ParallelComputeProbe **probe;unsigned selected;int result;} TileTask;
+static void *tile_worker(void *argument){
+    TileTask *task=argument;
+    report("WORKER started; configured stack=8 MiB");
+    if(!*task->probe){nps64_gpu_static_init();task->result=parallel_probe_open(task->probe,report);}
+    if(!task->result)task->result=parallel_probe_run(*task->probe,task->selected,PARALLEL_PROBE_REPEATS);
+    return NULL;
+}
+static int execute_tile(ParallelComputeProbe **probe,unsigned selected){
+    pthread_attr_t attr;int result=pthread_attr_init(&attr);
+    if(result){report("FAIL worker attribute initialization");return 1;}
+    result=pthread_attr_setstacksize(&attr,8*1024*1024);
+    pthread_t thread;TileTask task={probe,selected,0};
+    if(!result){report("WORKER create with explicit 8 MiB stack");result=pthread_create(&thread,&attr,tile_worker,&task);}
+    pthread_attr_destroy(&attr);
+    if(result){char message[128];snprintf(message,sizeof(message),"FAIL worker create/stack result=%d",result);report(message);return 1;}
+    result=pthread_join(thread,NULL);
+    if(result){report("FAIL worker join");return 1;}
+    return task.result;
+}
+#endif
 static void draw(unsigned selected,const unsigned results[PARALLEL_PROBE_CASES],const char *status,int failed) {
     uint32_t *fb=platform_framebuffer();
     for(unsigned i=0;i<SCREEN_W*SCREEN_H;i++)fb[i]=0xff102030u;
 #ifdef NPS64_PARALLEL_TILE_PROBE
-    platform_text(40,30,"NPS64 00.54 - ParaLLEl: captura real de tiles",0xffffffff,2);
+    platform_text(40,30,"NPS64 00.55 - ParaLLEl: captura real de tiles",0xffffffff,2);
     platform_text(40,80,"Despacho aislado del bloqueo 331. Empezar con el caso 2 (64 lanes).",0xffa0c0e0u,1);
 #else
     platform_text(40,30,"NPS64 00.52 - ParaLLEl: prueba de compute",0xffffffff,2);
@@ -47,7 +72,7 @@ int main(void) {
 #ifdef NPS64_PARALLEL_TILE_PROBE
     mkdir("/data/NPS64-Parallel",0777);
     nps64_log_init("/data/NPS64-Parallel/tile-probe.log");
-    report("NPS64 00.54 ORIGINAL TILE CAPTURE; isolated post-hang inputs; no ROM/core");
+    report("NPS64 00.55 ORIGINAL TILE CAPTURE; isolated post-hang inputs; no ROM/core");
 #else
     nps64_log_init("/data/NPS64/parallel-probe.log");
     report("NPS64 00.52 PARALLEL COMPUTE GATE; manual cases; no ROM/core");
@@ -73,8 +98,12 @@ int main(void) {
         if((pressed&BTN_CONFIRM)&&!failed) {
             status="Ejecutando: cada envio debe completar y dar valores exactos.";
             draw(selected,results,status,0);if(!platform_present())break;
+#ifdef NPS64_PARALLEL_TILE_PROBE
+            failed=execute_tile(&probe,selected);
+#else
             if(!probe){nps64_gpu_static_init();failed=parallel_probe_open(&probe,report);}
             if(!failed)failed=parallel_probe_run(probe,selected,PARALLEL_PROBE_REPEATS);
+#endif
             results[selected]=failed?2:1;
             unsigned passed=0;for(unsigned i=0;i<PARALLEL_PROBE_CASES;i++)passed+=results[i]==1;
             status=failed?"FAIL: no se enviara mas trabajo GPU; consultar logs.":

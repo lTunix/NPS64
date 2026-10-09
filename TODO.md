@@ -1,5 +1,11 @@
 ## Prioridad experimental: bloqueo ParaLLEl 00.53 / prueba aislada 00.54
 
+- [x] Analizar CE-34878-0 de 00.54: cierre antes de READY y sin SUBMIT.
+- [x] Crear solamente el pipeline elegido; registrar inicio/final de compilacion.
+- [x] Usar worker con pila explicita de 8 MiB y comprobar errores de creacion.
+- [x] Validar 128 fences y hashes de las capturas preservadas con compilacion diferida.
+- [ ] Confirmar preparacion/ejecucion en PS4 con [00.55](docs/PARALLEL-00.55-INIT.md).
+
 - [x] Analizar logs 00.53: visible=0, 330 envios completos, bloqueo 331 con marcador 5.
 - [x] Decodificar shaders y acotar binning/finalizacion; no atribuir WRITE_DATA a shader completado.
 - [x] Aislar tile shader upstream y datos triangle/scissor externos de la captura.

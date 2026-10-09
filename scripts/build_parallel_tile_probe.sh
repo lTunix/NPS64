@@ -5,15 +5,19 @@ sdk=/work/toolchain/OpenOrbis/PS4Toolchain
 sysroot=/work/build/gpu/sysroot
 probe=/work/build/parallel-tile-probe
 export NPS64_STAGE_DIR="$probe/stage" NPS64_ELF_DIR="$probe"
-export NPS64_CONTENT_ID=IV0000-NPSP00054_00-NPS64PARALLEL000
-export NPS64_TITLE_ID=NPSP00054 NPS64_TITLE='NPS64 - ParaLLEl tile capture'
-export NPS64_VERSION=00.54 NPS64_VERIFY_DIR="$probe/pkg-verify"
+export NPS64_CONTENT_ID=IV0000-NPSP00055_00-NPS64PARALLEL000
+export NPS64_TITLE_ID=NPSP00055 NPS64_TITLE='NPS64 - ParaLLEl tile capture'
+export NPS64_VERSION=00.55 NPS64_VERIFY_DIR="$probe/pkg-verify"
 export NPS64_PACKAGE_PATH="out/$NPS64_CONTENT_ID.pkg"
 mkdir -p "$probe" "$NPS64_STAGE_DIR/sce_sys" out
 test -f build/gpu/mesa-build/src/amd/vulkan/libvulkan_radeon.a || {
     echo 'Preparar GPU: bootstrap_gpu.sh y build_mesa_ps4.sh'; exit 1;
 }
-python3 scripts/prepare_parallel_tile_probe.py "${1:-/work/logs}"
+if [ "${NPS64_TILE_USE_PREPARED:-0}" = 1 ]; then
+    python3 scripts/test_prepared_parallel_tile.py
+else
+    python3 scripts/prepare_parallel_tile_probe.py "${1:-/work/logs}"
+fi
 for unit in parallel_probe_frontend parallel_tile_probe gpu_boot platform_ps4 runtime_ps4 log; do
     scripts/ps4-gpu-cc -DNPS64_GPU -DNPS64_PARALLEL_PROBE -DNPS64_PARALLEL_TILE_PROBE -std=c11 -O2 -Wall -Wextra -Werror \
       -Isrc -I"$probe" -Ivendor/parallel-n64/mupen64plus-video-paraLLEl/parallel-rdp/vulkan-headers/include \
@@ -43,5 +47,5 @@ python3 scripts/check_gpu_boot.py --hle-probe
 python3 scripts/assets.py
 bash scripts/package.sh
 bash scripts/verify_pkg.sh
-cp "$NPS64_PACKAGE_PATH" out/NPS64-00.54-parallel-tile-probe.pkg
+cp "$NPS64_PACKAGE_PATH" out/NPS64-00.55-parallel-tile-probe.pkg
 python3 scripts/check_parallel_tile_probe.py

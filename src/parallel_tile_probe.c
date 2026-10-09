@@ -46,7 +46,7 @@ int parallel_probe_open(ParallelComputeProbe **output,ParallelProbeReport callba
     if(!parallel_load_global())return failure(p,"global Vulkan dispatch",VK_ERROR_INITIALIZATION_FAILED);
 #endif
     VkApplicationInfo app={.sType=VK_STRUCTURE_TYPE_APPLICATION_INFO,
-        .pApplicationName="NPS64 00.54 original tile capture",.apiVersion=VK_API_VERSION_1_2};
+        .pApplicationName="NPS64 00.55 original tile capture",.apiVersion=VK_API_VERSION_1_2};
     VkInstanceCreateInfo ici={.sType=VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,.pApplicationInfo=&app};
     TRY(vkCreateInstance(&ici,NULL,&p->instance));
 #ifdef __ORBIS__
@@ -101,6 +101,7 @@ int parallel_probe_open(ParallelComputeProbe **output,ParallelProbeReport callba
         TRY(vkBindBufferMemory(p->device,p->buffers[binding],p->memories[binding],0));
         TRY(vkMapMemory(p->device,p->memories[binding],0,VK_WHOLE_SIZE,0,(void**)&p->mapped[binding]));
     }
+    report(p,"CREATE descriptor layout begin");
     VkDescriptorSetLayoutBinding bindings[5];
     for(unsigned i=0;i<5;i++)bindings[i]=(VkDescriptorSetLayoutBinding){.binding=i,.descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,.descriptorCount=1,.stageFlags=VK_SHADER_STAGE_COMPUTE_BIT};
     VkDescriptorSetLayoutCreateInfo slci={.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,.bindingCount=5,.pBindings=bindings};
@@ -118,17 +119,7 @@ int parallel_probe_open(ParallelComputeProbe **output,ParallelProbeReport callba
         VkWriteDescriptorSet write={.sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,.dstSet=p->set,.dstBinding=i,.descriptorCount=1,.descriptorType=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,.pBufferInfo=&dbi};
         vkUpdateDescriptorSets(p->device,1,&write,0,NULL);
     }
-    const uint32_t *codes[2]={tile_spv32,tile_spv64};const size_t bytes[2]={sizeof(tile_spv32),sizeof(tile_spv64)};
-    for(unsigned i=0;i<2;i++){
-        VkShaderModuleCreateInfo smci={.sType=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,.codeSize=bytes[i],.pCode=codes[i]};
-        TRY(vkCreateShaderModule(p->device,&smci,NULL,&p->shaders[i]));
-        VkSpecializationMapEntry entries[7];for(unsigned j=0;j<7;j++)entries[j]=(VkSpecializationMapEntry){j,4*j,4};
-        uint32_t constants[]={i?64:32,8,8,256,1024,32768,1};
-        VkSpecializationInfo spec={7,entries,sizeof(constants),constants};
-        VkComputePipelineCreateInfo pci={.sType=VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-          .stage={.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,.stage=VK_SHADER_STAGE_COMPUTE_BIT,.module=p->shaders[i],.pName="main",.pSpecializationInfo=&spec},.layout=p->layout};
-        TRY(vkCreateComputePipelines(p->device,VK_NULL_HANDLE,1,&pci,NULL,&p->pipelines[i]));
-    }
+    report(p,"CREATE command pool and fence begin");
     VkCommandPoolCreateInfo cpci={.sType=VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,.flags=VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,.queueFamilyIndex=family};
     TRY(vkCreateCommandPool(p->device,&cpci,NULL,&p->commands));
     VkCommandBufferAllocateInfo cbai={.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,.commandPool=p->commands,.level=VK_COMMAND_BUFFER_LEVEL_PRIMARY,.commandBufferCount=1};
@@ -136,8 +127,27 @@ int parallel_probe_open(ParallelComputeProbe **output,ParallelProbeReport callba
     VkFenceCreateInfo fci={.sType=VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};TRY(vkCreateFence(p->device,&fci,NULL,&p->fence));
     report(p,"READY isolated first tile stage: 320x239, one primitive; original 32 vs candidate 64");return 0;
 }
+static int prepare_pipeline(ParallelComputeProbe *p,unsigned index){
+    const uint32_t *codes[2]={tile_spv32,tile_spv64};const size_t bytes[2]={sizeof(tile_spv32),sizeof(tile_spv64)};
+    unsigned i=index;
+    {
+        VkShaderModuleCreateInfo smci={.sType=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,.codeSize=bytes[i],.pCode=codes[i]};
+        report(p,"CREATE shader case=%u bytes=%zu",i,bytes[i]);
+        TRY(vkCreateShaderModule(p->device,&smci,NULL,&p->shaders[i]));
+        VkSpecializationMapEntry entries[7];for(unsigned j=0;j<7;j++)entries[j]=(VkSpecializationMapEntry){j,4*j,4};
+        uint32_t constants[]={i?64:32,8,8,256,1024,32768,1};
+        VkSpecializationInfo spec={7,entries,sizeof(constants),constants};
+        VkComputePipelineCreateInfo pci={.sType=VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+          .stage={.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,.stage=VK_SHADER_STAGE_COMPUTE_BIT,.module=p->shaders[i],.pName="main",.pSpecializationInfo=&spec},.layout=p->layout};
+        report(p,"COMPILE pipeline case=%u local=%u begin",i,i?64:32);
+        TRY(vkCreateComputePipelines(p->device,VK_NULL_HANDLE,1,&pci,NULL,&p->pipelines[i]));
+        report(p,"COMPILE pipeline case=%u complete",i);
+    }
+    return 0;
+}
 int parallel_probe_run(ParallelComputeProbe *p,unsigned index,unsigned repeats) {
     if(!p||p->failed||index>=PARALLEL_PROBE_CASES||!repeats||repeats>PARALLEL_PROBE_REPEATS)return 1;
+    if(!p->pipelines[index]&&prepare_pipeline(p,index))return 1;
     uint32_t *expected=malloc(TOTAL_BYTES);if(!expected)return failure(p,"reference allocation",VK_ERROR_OUT_OF_HOST_MEMORY);
     memset(expected,0xcd,TOTAL_BYTES);
     for(unsigned i=0;i<5;i++)memset((char*)expected+i*SLOT_BYTES,0,sizes[i]);
