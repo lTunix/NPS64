@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export PSB=/work/build/gpu OPENORBIS=/work/toolchain/OpenOrbis/PS4Toolchain
+source /work/build/gpu/dolphin-port/toolchain/env.sh
+exec clang++-21 -nostdinc++ -isystem "$PS4_SYSROOT/include/c++/v1" $PS4_BASE_FLAGS -isystem /work/build/gpu/dolphin-port/port/mesa-overlay -std=c++17 "$@"

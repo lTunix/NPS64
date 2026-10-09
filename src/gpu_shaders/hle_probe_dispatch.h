@@ -1,0 +1,205 @@
+#pragma once
+extern PFN_vkVoidFunction vk_icdGetInstanceProcAddr(VkInstance,const char*);
+static PFN_vkGetDeviceProcAddr hle_gdpa;
+static PFN_vkAllocateCommandBuffers hle_vkAllocateCommandBuffers;
+#define vkAllocateCommandBuffers hle_vkAllocateCommandBuffers
+static PFN_vkAllocateDescriptorSets hle_vkAllocateDescriptorSets;
+#define vkAllocateDescriptorSets hle_vkAllocateDescriptorSets
+static PFN_vkAllocateMemory hle_vkAllocateMemory;
+#define vkAllocateMemory hle_vkAllocateMemory
+static PFN_vkBeginCommandBuffer hle_vkBeginCommandBuffer;
+#define vkBeginCommandBuffer hle_vkBeginCommandBuffer
+static PFN_vkBindBufferMemory hle_vkBindBufferMemory;
+#define vkBindBufferMemory hle_vkBindBufferMemory
+static PFN_vkBindImageMemory hle_vkBindImageMemory;
+#define vkBindImageMemory hle_vkBindImageMemory
+static PFN_vkCmdBeginRenderPass hle_vkCmdBeginRenderPass;
+#define vkCmdBeginRenderPass hle_vkCmdBeginRenderPass
+static PFN_vkCmdBindDescriptorSets hle_vkCmdBindDescriptorSets;
+#define vkCmdBindDescriptorSets hle_vkCmdBindDescriptorSets
+static PFN_vkCmdBindPipeline hle_vkCmdBindPipeline;
+#define vkCmdBindPipeline hle_vkCmdBindPipeline
+static PFN_vkCmdBindVertexBuffers hle_vkCmdBindVertexBuffers;
+#define vkCmdBindVertexBuffers hle_vkCmdBindVertexBuffers
+static PFN_vkCmdCopyBufferToImage hle_vkCmdCopyBufferToImage;
+#define vkCmdCopyBufferToImage hle_vkCmdCopyBufferToImage
+static PFN_vkCmdCopyImageToBuffer hle_vkCmdCopyImageToBuffer;
+#define vkCmdCopyImageToBuffer hle_vkCmdCopyImageToBuffer
+static PFN_vkCmdDraw hle_vkCmdDraw;
+#define vkCmdDraw hle_vkCmdDraw
+static PFN_vkCmdEndRenderPass hle_vkCmdEndRenderPass;
+#define vkCmdEndRenderPass hle_vkCmdEndRenderPass
+static PFN_vkCmdPipelineBarrier hle_vkCmdPipelineBarrier;
+#define vkCmdPipelineBarrier hle_vkCmdPipelineBarrier
+static PFN_vkCmdPushConstants hle_vkCmdPushConstants;
+#define vkCmdPushConstants hle_vkCmdPushConstants
+static PFN_vkCmdSetScissor hle_vkCmdSetScissor;
+#define vkCmdSetScissor hle_vkCmdSetScissor
+static PFN_vkCreateBuffer hle_vkCreateBuffer;
+#define vkCreateBuffer hle_vkCreateBuffer
+static PFN_vkCreateCommandPool hle_vkCreateCommandPool;
+#define vkCreateCommandPool hle_vkCreateCommandPool
+static PFN_vkCreateDescriptorPool hle_vkCreateDescriptorPool;
+#define vkCreateDescriptorPool hle_vkCreateDescriptorPool
+static PFN_vkCreateDescriptorSetLayout hle_vkCreateDescriptorSetLayout;
+#define vkCreateDescriptorSetLayout hle_vkCreateDescriptorSetLayout
+static PFN_vkCreateDevice hle_vkCreateDevice;
+#define vkCreateDevice hle_vkCreateDevice
+static PFN_vkCreateFence hle_vkCreateFence;
+#define vkCreateFence hle_vkCreateFence
+static PFN_vkCreateFramebuffer hle_vkCreateFramebuffer;
+#define vkCreateFramebuffer hle_vkCreateFramebuffer
+static PFN_vkCreateGraphicsPipelines hle_vkCreateGraphicsPipelines;
+#define vkCreateGraphicsPipelines hle_vkCreateGraphicsPipelines
+static PFN_vkCreateImage hle_vkCreateImage;
+#define vkCreateImage hle_vkCreateImage
+static PFN_vkCreateImageView hle_vkCreateImageView;
+#define vkCreateImageView hle_vkCreateImageView
+static PFN_vkCreateInstance hle_vkCreateInstance;
+#define vkCreateInstance hle_vkCreateInstance
+static PFN_vkCreatePipelineLayout hle_vkCreatePipelineLayout;
+#define vkCreatePipelineLayout hle_vkCreatePipelineLayout
+static PFN_vkCreateRenderPass hle_vkCreateRenderPass;
+#define vkCreateRenderPass hle_vkCreateRenderPass
+static PFN_vkCreateSampler hle_vkCreateSampler;
+#define vkCreateSampler hle_vkCreateSampler
+static PFN_vkCreateShaderModule hle_vkCreateShaderModule;
+#define vkCreateShaderModule hle_vkCreateShaderModule
+static PFN_vkDestroyBuffer hle_vkDestroyBuffer;
+#define vkDestroyBuffer hle_vkDestroyBuffer
+static PFN_vkDestroyCommandPool hle_vkDestroyCommandPool;
+#define vkDestroyCommandPool hle_vkDestroyCommandPool
+static PFN_vkDestroyDescriptorPool hle_vkDestroyDescriptorPool;
+#define vkDestroyDescriptorPool hle_vkDestroyDescriptorPool
+static PFN_vkDestroyDescriptorSetLayout hle_vkDestroyDescriptorSetLayout;
+#define vkDestroyDescriptorSetLayout hle_vkDestroyDescriptorSetLayout
+static PFN_vkDestroyDevice hle_vkDestroyDevice;
+#define vkDestroyDevice hle_vkDestroyDevice
+static PFN_vkDestroyFence hle_vkDestroyFence;
+#define vkDestroyFence hle_vkDestroyFence
+static PFN_vkDestroyFramebuffer hle_vkDestroyFramebuffer;
+#define vkDestroyFramebuffer hle_vkDestroyFramebuffer
+static PFN_vkDestroyImage hle_vkDestroyImage;
+#define vkDestroyImage hle_vkDestroyImage
+static PFN_vkDestroyImageView hle_vkDestroyImageView;
+#define vkDestroyImageView hle_vkDestroyImageView
+static PFN_vkDestroyInstance hle_vkDestroyInstance;
+#define vkDestroyInstance hle_vkDestroyInstance
+static PFN_vkDestroyPipeline hle_vkDestroyPipeline;
+#define vkDestroyPipeline hle_vkDestroyPipeline
+static PFN_vkDestroyPipelineLayout hle_vkDestroyPipelineLayout;
+#define vkDestroyPipelineLayout hle_vkDestroyPipelineLayout
+static PFN_vkDestroyRenderPass hle_vkDestroyRenderPass;
+#define vkDestroyRenderPass hle_vkDestroyRenderPass
+static PFN_vkDestroySampler hle_vkDestroySampler;
+#define vkDestroySampler hle_vkDestroySampler
+static PFN_vkDestroyShaderModule hle_vkDestroyShaderModule;
+#define vkDestroyShaderModule hle_vkDestroyShaderModule
+static PFN_vkDeviceWaitIdle hle_vkDeviceWaitIdle;
+#define vkDeviceWaitIdle hle_vkDeviceWaitIdle
+static PFN_vkEndCommandBuffer hle_vkEndCommandBuffer;
+#define vkEndCommandBuffer hle_vkEndCommandBuffer
+static PFN_vkEnumeratePhysicalDevices hle_vkEnumeratePhysicalDevices;
+#define vkEnumeratePhysicalDevices hle_vkEnumeratePhysicalDevices
+static PFN_vkFreeMemory hle_vkFreeMemory;
+#define vkFreeMemory hle_vkFreeMemory
+static PFN_vkGetBufferMemoryRequirements hle_vkGetBufferMemoryRequirements;
+#define vkGetBufferMemoryRequirements hle_vkGetBufferMemoryRequirements
+static PFN_vkGetDeviceQueue hle_vkGetDeviceQueue;
+#define vkGetDeviceQueue hle_vkGetDeviceQueue
+static PFN_vkGetImageMemoryRequirements hle_vkGetImageMemoryRequirements;
+#define vkGetImageMemoryRequirements hle_vkGetImageMemoryRequirements
+static PFN_vkGetPhysicalDeviceMemoryProperties hle_vkGetPhysicalDeviceMemoryProperties;
+#define vkGetPhysicalDeviceMemoryProperties hle_vkGetPhysicalDeviceMemoryProperties
+static PFN_vkGetPhysicalDeviceProperties hle_vkGetPhysicalDeviceProperties;
+#define vkGetPhysicalDeviceProperties hle_vkGetPhysicalDeviceProperties
+static PFN_vkGetPhysicalDeviceQueueFamilyProperties hle_vkGetPhysicalDeviceQueueFamilyProperties;
+#define vkGetPhysicalDeviceQueueFamilyProperties hle_vkGetPhysicalDeviceQueueFamilyProperties
+static PFN_vkMapMemory hle_vkMapMemory;
+#define vkMapMemory hle_vkMapMemory
+static PFN_vkQueueSubmit hle_vkQueueSubmit;
+#define vkQueueSubmit hle_vkQueueSubmit
+static PFN_vkResetCommandBuffer hle_vkResetCommandBuffer;
+#define vkResetCommandBuffer hle_vkResetCommandBuffer
+static PFN_vkResetFences hle_vkResetFences;
+#define vkResetFences hle_vkResetFences
+static PFN_vkUnmapMemory hle_vkUnmapMemory;
+#define vkUnmapMemory hle_vkUnmapMemory
+static PFN_vkUpdateDescriptorSets hle_vkUpdateDescriptorSets;
+#define vkUpdateDescriptorSets hle_vkUpdateDescriptorSets
+static PFN_vkWaitForFences hle_vkWaitForFences;
+#define vkWaitForFences hle_vkWaitForFences
+static int hle_load_global(void) {
+hle_vkCreateInstance=(PFN_vkCreateInstance)vk_icdGetInstanceProcAddr(VK_NULL_HANDLE,"vkCreateInstance");if(!hle_vkCreateInstance)return 0;
+return 1;
+}
+static int hle_load_instance(VkInstance instance) {
+hle_gdpa=(PFN_vkGetDeviceProcAddr)vk_icdGetInstanceProcAddr(instance,"vkGetDeviceProcAddr");if(!hle_gdpa)return 0;
+hle_vkCreateDevice=(PFN_vkCreateDevice)vk_icdGetInstanceProcAddr(instance,"vkCreateDevice");if(!hle_vkCreateDevice)return 0;
+hle_vkDestroyInstance=(PFN_vkDestroyInstance)vk_icdGetInstanceProcAddr(instance,"vkDestroyInstance");if(!hle_vkDestroyInstance)return 0;
+hle_vkEnumeratePhysicalDevices=(PFN_vkEnumeratePhysicalDevices)vk_icdGetInstanceProcAddr(instance,"vkEnumeratePhysicalDevices");if(!hle_vkEnumeratePhysicalDevices)return 0;
+hle_vkGetPhysicalDeviceMemoryProperties=(PFN_vkGetPhysicalDeviceMemoryProperties)vk_icdGetInstanceProcAddr(instance,"vkGetPhysicalDeviceMemoryProperties");if(!hle_vkGetPhysicalDeviceMemoryProperties)return 0;
+hle_vkGetPhysicalDeviceProperties=(PFN_vkGetPhysicalDeviceProperties)vk_icdGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties");if(!hle_vkGetPhysicalDeviceProperties)return 0;
+hle_vkGetPhysicalDeviceQueueFamilyProperties=(PFN_vkGetPhysicalDeviceQueueFamilyProperties)vk_icdGetInstanceProcAddr(instance,"vkGetPhysicalDeviceQueueFamilyProperties");if(!hle_vkGetPhysicalDeviceQueueFamilyProperties)return 0;
+return 1;
+}
+static int hle_load_device(VkDevice device) {
+hle_vkAllocateCommandBuffers=(PFN_vkAllocateCommandBuffers)hle_gdpa(device,"vkAllocateCommandBuffers");if(!hle_vkAllocateCommandBuffers)return 0;
+hle_vkAllocateDescriptorSets=(PFN_vkAllocateDescriptorSets)hle_gdpa(device,"vkAllocateDescriptorSets");if(!hle_vkAllocateDescriptorSets)return 0;
+hle_vkAllocateMemory=(PFN_vkAllocateMemory)hle_gdpa(device,"vkAllocateMemory");if(!hle_vkAllocateMemory)return 0;
+hle_vkBeginCommandBuffer=(PFN_vkBeginCommandBuffer)hle_gdpa(device,"vkBeginCommandBuffer");if(!hle_vkBeginCommandBuffer)return 0;
+hle_vkBindBufferMemory=(PFN_vkBindBufferMemory)hle_gdpa(device,"vkBindBufferMemory");if(!hle_vkBindBufferMemory)return 0;
+hle_vkBindImageMemory=(PFN_vkBindImageMemory)hle_gdpa(device,"vkBindImageMemory");if(!hle_vkBindImageMemory)return 0;
+hle_vkCmdBeginRenderPass=(PFN_vkCmdBeginRenderPass)hle_gdpa(device,"vkCmdBeginRenderPass");if(!hle_vkCmdBeginRenderPass)return 0;
+hle_vkCmdBindDescriptorSets=(PFN_vkCmdBindDescriptorSets)hle_gdpa(device,"vkCmdBindDescriptorSets");if(!hle_vkCmdBindDescriptorSets)return 0;
+hle_vkCmdBindPipeline=(PFN_vkCmdBindPipeline)hle_gdpa(device,"vkCmdBindPipeline");if(!hle_vkCmdBindPipeline)return 0;
+hle_vkCmdBindVertexBuffers=(PFN_vkCmdBindVertexBuffers)hle_gdpa(device,"vkCmdBindVertexBuffers");if(!hle_vkCmdBindVertexBuffers)return 0;
+hle_vkCmdCopyBufferToImage=(PFN_vkCmdCopyBufferToImage)hle_gdpa(device,"vkCmdCopyBufferToImage");if(!hle_vkCmdCopyBufferToImage)return 0;
+hle_vkCmdCopyImageToBuffer=(PFN_vkCmdCopyImageToBuffer)hle_gdpa(device,"vkCmdCopyImageToBuffer");if(!hle_vkCmdCopyImageToBuffer)return 0;
+hle_vkCmdDraw=(PFN_vkCmdDraw)hle_gdpa(device,"vkCmdDraw");if(!hle_vkCmdDraw)return 0;
+hle_vkCmdEndRenderPass=(PFN_vkCmdEndRenderPass)hle_gdpa(device,"vkCmdEndRenderPass");if(!hle_vkCmdEndRenderPass)return 0;
+hle_vkCmdPipelineBarrier=(PFN_vkCmdPipelineBarrier)hle_gdpa(device,"vkCmdPipelineBarrier");if(!hle_vkCmdPipelineBarrier)return 0;
+hle_vkCmdPushConstants=(PFN_vkCmdPushConstants)hle_gdpa(device,"vkCmdPushConstants");if(!hle_vkCmdPushConstants)return 0;
+hle_vkCmdSetScissor=(PFN_vkCmdSetScissor)hle_gdpa(device,"vkCmdSetScissor");if(!hle_vkCmdSetScissor)return 0;
+hle_vkCreateBuffer=(PFN_vkCreateBuffer)hle_gdpa(device,"vkCreateBuffer");if(!hle_vkCreateBuffer)return 0;
+hle_vkCreateCommandPool=(PFN_vkCreateCommandPool)hle_gdpa(device,"vkCreateCommandPool");if(!hle_vkCreateCommandPool)return 0;
+hle_vkCreateDescriptorPool=(PFN_vkCreateDescriptorPool)hle_gdpa(device,"vkCreateDescriptorPool");if(!hle_vkCreateDescriptorPool)return 0;
+hle_vkCreateDescriptorSetLayout=(PFN_vkCreateDescriptorSetLayout)hle_gdpa(device,"vkCreateDescriptorSetLayout");if(!hle_vkCreateDescriptorSetLayout)return 0;
+hle_vkCreateFence=(PFN_vkCreateFence)hle_gdpa(device,"vkCreateFence");if(!hle_vkCreateFence)return 0;
+hle_vkCreateFramebuffer=(PFN_vkCreateFramebuffer)hle_gdpa(device,"vkCreateFramebuffer");if(!hle_vkCreateFramebuffer)return 0;
+hle_vkCreateGraphicsPipelines=(PFN_vkCreateGraphicsPipelines)hle_gdpa(device,"vkCreateGraphicsPipelines");if(!hle_vkCreateGraphicsPipelines)return 0;
+hle_vkCreateImage=(PFN_vkCreateImage)hle_gdpa(device,"vkCreateImage");if(!hle_vkCreateImage)return 0;
+hle_vkCreateImageView=(PFN_vkCreateImageView)hle_gdpa(device,"vkCreateImageView");if(!hle_vkCreateImageView)return 0;
+hle_vkCreatePipelineLayout=(PFN_vkCreatePipelineLayout)hle_gdpa(device,"vkCreatePipelineLayout");if(!hle_vkCreatePipelineLayout)return 0;
+hle_vkCreateRenderPass=(PFN_vkCreateRenderPass)hle_gdpa(device,"vkCreateRenderPass");if(!hle_vkCreateRenderPass)return 0;
+hle_vkCreateSampler=(PFN_vkCreateSampler)hle_gdpa(device,"vkCreateSampler");if(!hle_vkCreateSampler)return 0;
+hle_vkCreateShaderModule=(PFN_vkCreateShaderModule)hle_gdpa(device,"vkCreateShaderModule");if(!hle_vkCreateShaderModule)return 0;
+hle_vkDestroyBuffer=(PFN_vkDestroyBuffer)hle_gdpa(device,"vkDestroyBuffer");if(!hle_vkDestroyBuffer)return 0;
+hle_vkDestroyCommandPool=(PFN_vkDestroyCommandPool)hle_gdpa(device,"vkDestroyCommandPool");if(!hle_vkDestroyCommandPool)return 0;
+hle_vkDestroyDescriptorPool=(PFN_vkDestroyDescriptorPool)hle_gdpa(device,"vkDestroyDescriptorPool");if(!hle_vkDestroyDescriptorPool)return 0;
+hle_vkDestroyDescriptorSetLayout=(PFN_vkDestroyDescriptorSetLayout)hle_gdpa(device,"vkDestroyDescriptorSetLayout");if(!hle_vkDestroyDescriptorSetLayout)return 0;
+hle_vkDestroyDevice=(PFN_vkDestroyDevice)hle_gdpa(device,"vkDestroyDevice");if(!hle_vkDestroyDevice)return 0;
+hle_vkDestroyFence=(PFN_vkDestroyFence)hle_gdpa(device,"vkDestroyFence");if(!hle_vkDestroyFence)return 0;
+hle_vkDestroyFramebuffer=(PFN_vkDestroyFramebuffer)hle_gdpa(device,"vkDestroyFramebuffer");if(!hle_vkDestroyFramebuffer)return 0;
+hle_vkDestroyImage=(PFN_vkDestroyImage)hle_gdpa(device,"vkDestroyImage");if(!hle_vkDestroyImage)return 0;
+hle_vkDestroyImageView=(PFN_vkDestroyImageView)hle_gdpa(device,"vkDestroyImageView");if(!hle_vkDestroyImageView)return 0;
+hle_vkDestroyPipeline=(PFN_vkDestroyPipeline)hle_gdpa(device,"vkDestroyPipeline");if(!hle_vkDestroyPipeline)return 0;
+hle_vkDestroyPipelineLayout=(PFN_vkDestroyPipelineLayout)hle_gdpa(device,"vkDestroyPipelineLayout");if(!hle_vkDestroyPipelineLayout)return 0;
+hle_vkDestroyRenderPass=(PFN_vkDestroyRenderPass)hle_gdpa(device,"vkDestroyRenderPass");if(!hle_vkDestroyRenderPass)return 0;
+hle_vkDestroySampler=(PFN_vkDestroySampler)hle_gdpa(device,"vkDestroySampler");if(!hle_vkDestroySampler)return 0;
+hle_vkDestroyShaderModule=(PFN_vkDestroyShaderModule)hle_gdpa(device,"vkDestroyShaderModule");if(!hle_vkDestroyShaderModule)return 0;
+hle_vkDeviceWaitIdle=(PFN_vkDeviceWaitIdle)hle_gdpa(device,"vkDeviceWaitIdle");if(!hle_vkDeviceWaitIdle)return 0;
+hle_vkEndCommandBuffer=(PFN_vkEndCommandBuffer)hle_gdpa(device,"vkEndCommandBuffer");if(!hle_vkEndCommandBuffer)return 0;
+hle_vkFreeMemory=(PFN_vkFreeMemory)hle_gdpa(device,"vkFreeMemory");if(!hle_vkFreeMemory)return 0;
+hle_vkGetBufferMemoryRequirements=(PFN_vkGetBufferMemoryRequirements)hle_gdpa(device,"vkGetBufferMemoryRequirements");if(!hle_vkGetBufferMemoryRequirements)return 0;
+hle_vkGetDeviceQueue=(PFN_vkGetDeviceQueue)hle_gdpa(device,"vkGetDeviceQueue");if(!hle_vkGetDeviceQueue)return 0;
+hle_vkGetImageMemoryRequirements=(PFN_vkGetImageMemoryRequirements)hle_gdpa(device,"vkGetImageMemoryRequirements");if(!hle_vkGetImageMemoryRequirements)return 0;
+hle_vkMapMemory=(PFN_vkMapMemory)hle_gdpa(device,"vkMapMemory");if(!hle_vkMapMemory)return 0;
+hle_vkQueueSubmit=(PFN_vkQueueSubmit)hle_gdpa(device,"vkQueueSubmit");if(!hle_vkQueueSubmit)return 0;
+hle_vkResetCommandBuffer=(PFN_vkResetCommandBuffer)hle_gdpa(device,"vkResetCommandBuffer");if(!hle_vkResetCommandBuffer)return 0;
+hle_vkResetFences=(PFN_vkResetFences)hle_gdpa(device,"vkResetFences");if(!hle_vkResetFences)return 0;
+hle_vkUnmapMemory=(PFN_vkUnmapMemory)hle_gdpa(device,"vkUnmapMemory");if(!hle_vkUnmapMemory)return 0;
+hle_vkUpdateDescriptorSets=(PFN_vkUpdateDescriptorSets)hle_gdpa(device,"vkUpdateDescriptorSets");if(!hle_vkUpdateDescriptorSets)return 0;
+hle_vkWaitForFences=(PFN_vkWaitForFences)hle_gdpa(device,"vkWaitForFences");if(!hle_vkWaitForFences)return 0;
+return 1;
+}

@@ -1,0 +1,65 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Independent per-tile binning for the PS4 Vulkan investigation.
+// Uses upstream MIT-licensed geometry predicates and memory structures.
+// No shared memory, atomics, subgroup operations or workgroup barriers.
+#define SMALL_TYPES 0
+#define DEBUG_ENABLE 0
+#include "small_types.h"
+#include "data_structures.h"
+#include "binning.h"
+layout(local_size_x = 64) in;
+layout(constant_id = 1) const int TILE_WIDTH = 8;
+layout(constant_id = 2) const int TILE_HEIGHT = 8;
+layout(constant_id = 3) const int MAX_PRIMITIVES = 256;
+layout(constant_id = 4) const int MAX_WIDTH = 1024;
+layout(constant_id = 6) const int SCALE_FACTOR = 1;
+const int TILE_BINNING_STRIDE = MAX_PRIMITIVES / 32;
+const int MAX_TILES_X = MAX_WIDTH / TILE_WIDTH;
+layout(set = 0, binding = 0, std430) readonly buffer TriangleSetupBuffer {
+    TriangleSetupMem elems[];
+} triangle_setup;
+#include "load_triangle_setup.h"
+layout(set = 0, binding = 1, std430) readonly buffer ScissorStateBuffer {
+    ScissorStateMem elems[];
+} scissor_state;
+#include "load_scissor_state.h"
+layout(set = 0, binding = 3, std430) writeonly buffer TileBitmask {
+    uint binned_bitmask[];
+};
+layout(set = 0, binding = 4, std430) writeonly buffer TileBitmaskCoarse {
+    uint binned_bitmask_coarse[];
+};
+layout(push_constant, std430) uniform Registers {
+    uvec2 resolution;
+    int primitive_count;
+} fb_info;
+void main()
+{
+    int lane = int(gl_LocalInvocationIndex);
+    ivec2 tile = ivec2(gl_WorkGroupID.yz) * 8 + ivec2(lane & 7, lane >> 3);
+    ivec2 base_coord = tile * ivec2(TILE_WIDTH, TILE_HEIGHT);
+    ivec2 end_coord = min(base_coord + ivec2(TILE_WIDTH, TILE_HEIGHT), ivec2(fb_info.resolution)) - 1;
+    int linear_tile = tile.y * MAX_TILES_X + tile.x;
+    int count = clamp(fb_info.primitive_count, 0, MAX_PRIMITIVES);
+    int groups = (count + 31) / 32;
+    uint coarse = 0u;
+    bool inside = all(lessThan(base_coord, ivec2(fb_info.resolution)));
+    // One invocation owns every mask for its tile; no inter-thread reduction.
+    for (int group = 0; group < groups; group++) {
+        uint mask = 0u;
+        if (inside) {
+            for (int bit = 0; bit < 32; bit++) {
+                uint primitive = uint(group * 32 + bit);
+                if (primitive >= uint(count)) break;
+                ScissorState scissor = load_scissor_state(primitive);
+                TriangleSetup setup = load_triangle_setup(primitive);
+                if (bin_primitive(setup, base_coord, end_coord, SCALE_FACTOR, scissor))
+                    mask |= 1u << bit;
+            }
+        }
+        binned_bitmask[linear_tile * TILE_BINNING_STRIDE + group] = mask;
+        if (mask != 0u) coarse |= 1u << group;
+    }
+    binned_bitmask_coarse[linear_tile] = coarse;
+}

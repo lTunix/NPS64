@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+sdk="${OO_PS4_TOOLCHAIN:-/work/toolchain/OpenOrbis/PS4Toolchain}"
+exec clang --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -D__ORBIS__ -D__PS4__ -D_GNU_SOURCE --sysroot="$sdk" -isystem "$sdk/include" "$@"

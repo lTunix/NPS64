@@ -1,0 +1,9 @@
+FROM nps64-builder:local
+RUN curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key -o /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
+    echo 'deb https://apt.llvm.org/jammy/ llvm-toolchain-jammy-21 main' > /etc/apt/sources.list.d/llvm21.list && \
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    clang-21 lld-21 llvm-21 cmake ninja-build pkg-config python3-pip python3-venv \
+    python3-mako python3-yaml zlib1g-dev glslang-tools libvulkan-dev mesa-vulkan-drivers vulkan-tools && \
+    python3 -m pip install --no-cache-dir 'meson==1.10.0' 'cmake==3.31.6'
+RUN apt-get update && apt-get install -y --no-install-recommends xz-utils && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends vulkan-validationlayers && rm -rf /var/lib/apt/lists/*

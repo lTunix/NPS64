@@ -1,0 +1,26 @@
+#version 450
+// Isolate the half-wave/LDS path used by tile_binning_combined.
+layout(local_size_x_id = 0) in;
+layout(constant_id = 1) const uint mode = 0;
+layout(set = 0, binding = 0, std430) buffer Result { uint values[]; } result;
+shared uint mask;
+void main()
+{
+    uint lane = gl_LocalInvocationIndex;
+    if (mode == 0) {
+        result.values[gl_GlobalInvocationID.x] = gl_GlobalInvocationID.x ^ 0x64a5u;
+        return;
+    }
+    if (lane == 0) mask = 0u;
+    barrier();
+    if (lane < 32) atomicOr(mask, 1u << lane);
+    barrier();
+    uint remaining = mask;
+    uint count = 0;
+    while (remaining != 0u) {
+        int bit = findLSB(remaining);
+        remaining &= ~(1u << bit);
+        count++;
+    }
+    result.values[gl_GlobalInvocationID.x] = count;
+}

@@ -1,0 +1,12 @@
+* text=auto eol=lf
+*.sh text eol=lf
+scripts/ps4-cc text eol=lf
+scripts/ps4-cxx text eol=lf
+*.c text eol=lf
+*.h text eol=lf
+*.py text eol=lf
+*.png binary
+*.bin binary
+*.profdata binary
+scripts/ps4-gpu-cc text eol=lf
+scripts/ps4-gpu-cxx text eol=lf

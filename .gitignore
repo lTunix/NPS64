@@ -1,0 +1,74 @@
+# Dependencies and SDKs: fetched by scripts/bootstrap*.sh and sources.lock.json.
+/toolchain/
+/downloads/
+/vendor/
+/reference/
+
+# Build products, generated packages, captures and benchmark output.
+/build/
+/out/
+*.o
+*.a
+*.d
+*.so
+*.dll
+*.exe
+*.elf
+*.oelf
+*.self
+*.pkg
+*.profraw
+gmon.out
+
+# Local game dumps and save data must never enter the repository.
+*.[nN]64
+*.[zZ]64
+*.[vV]64
+*.[nN][dD][dD]
+*.[rR][oO][mM]
+*.[iI][sS][oO]
+*.[bB][iI][nN]
+!assets/font.bin
+*.srm
+*.eep
+*.mpk
+*.sav
+*.sra
+*.fla
+*.state
+*.state.*
+/games/
+/roms/
+/saves/
+
+# Runtime diagnostics, crash dumps, local settings and conversation exports.
+*.log
+*.dmp
+*.core
+/flight/
+/chat.txt
+/gpu-hang.txt
+/settings.cfg
+/diagnostics.cfg
+
+# Downloaded archives and local credentials/editor caches.
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tar.xz
+*.tgz
+*.deb
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+/.idea/
+/.vscode/
+.DS_Store
+Thumbs.db
+
+# Deliberately tracked: assets/*.profdata, the font and embedded shader headers.
+# These small inputs are required to reproduce the published CPU/GPU builds.

@@ -1,0 +1,37 @@
+{
+  "parallel-n64": {
+    "url": "https://github.com/libretro/parallel-n64.git",
+    "path": "vendor/parallel-n64",
+    "revision": "890323d083c7f5719bd59ebd010d75b3b7f8d10f"
+  },
+  "DolphinPS4": {
+    "url": "https://github.com/iHaiDeeZ/DolphinPS4.git",
+    "path": "reference/DolphinPS4",
+    "revision": "cf2c55229e8b7b96ee12aa7dff1d2c7ef574c57a"
+  },
+  "OpenOrbis": {
+    "url": "https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain.git",
+    "path": "vendor/OpenOrbis",
+    "revision": "0a1aaf9dd4a92695538bdeb09fb056d06dd11725"
+  },
+  "mesa-26.0.8.tar.xz": {
+    "url": "https://archive.mesa3d.org/mesa-26.0.8.tar.xz",
+    "path": "downloads/mesa-26.0.8.tar.xz",
+    "sha256": "caf1c0061a68e88dfa74967a7e780c0e85d65b6c4e334cd69095a5dc54ad78bc"
+  },
+  "libdrm-2.4.125.tar.xz": {
+    "url": "https://dri.freedesktop.org/libdrm/libdrm-2.4.125.tar.xz",
+    "path": "downloads/libdrm-2.4.125.tar.xz",
+    "sha256": "d4bae92797a50f81a93524762e0410a49cd84cfa0f997795bc0172ac8fb1d96a"
+  },
+  "llvm-project-21.1.6.src.tar.xz": {
+    "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.6/llvm-project-21.1.6.src.tar.xz",
+    "path": "downloads/llvm-project-21.1.6.src.tar.xz",
+    "sha256": "ae67086eb04bed7ca11ab880349b5f1ab6f50e1b88cda376eaf8a845b935762b"
+  },
+  "glslang-15.1.0.tar.gz": {
+    "url": "https://codeload.github.com/KhronosGroup/glslang/tar.gz/refs/tags/15.1.0",
+    "path": "downloads/glslang-15.1.0.tar.gz",
+    "sha256": "4bdcd8cdb330313f0d4deed7be527b0ac1c115ff272e492853a6e98add61b4bc"
+  }
+}
