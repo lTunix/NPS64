@@ -1,5 +1,9 @@
 # ParaLLEl-RDP 00.53: ROMs y comparacion de imagen
 
+Resultado PS4 recibido: vuelve a bloquearse antes del primer cuadro visible,
+en el envio 331, marcador 5. La comparacion local no demuestra estabilidad
+de Liverpool. Continuar con la [prueba aislada 00.54](PARALLEL-00.54-TILES.md).
+
 App experimental independiente, TITLE_ID `NPSP00053`. El paquete es
 `out/NPS64-00.53-parallel-rdp-test.pkg`; CPU51 permanece instalada.
 

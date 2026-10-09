@@ -46,6 +46,7 @@ gmon.out
 *.dmp
 *.core
 /flight/
+/logs/
 /chat.txt
 /gpu-hang.txt
 /settings.cfg

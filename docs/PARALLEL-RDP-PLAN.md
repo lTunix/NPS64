@@ -36,6 +36,11 @@ menu, sobre el mismo stream RDP: error maximo 1 por canal. No confirma aun
 rendimiento ni estabilidad del juego completo en PS4. Ver
 [entrega experimental](PARALLEL-00.53-GAMES.md).
 
+La prueba PS4 de 00.53 bloquea el primer trabajo RDP visible en el envio
+331, marcador 5. [00.54](PARALLEL-00.54-TILES.md) reproduce aisladamente
+el binning original con datos externos capturados y contrasta grupos 32/64.
+Las dos variantes pasan en host; la causa y el arreglo en PS4 siguen pendientes.
+
 ## Bloque 1: pruebas minimas de compute
 
 - [ ] Revisar y reutilizar `tests/gpu_compute_probe.*` y las herramientas de captura.

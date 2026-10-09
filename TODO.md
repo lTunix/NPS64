@@ -1,4 +1,17 @@
-## Prioridad experimental: ParaLLEl 00.53
+## Prioridad experimental: bloqueo ParaLLEl 00.53 / prueba aislada 00.54
+
+- [x] Analizar logs 00.53: visible=0, 330 envios completos, bloqueo 331 con marcador 5.
+- [x] Decodificar shaders y acotar binning/finalizacion; no atribuir WRITE_DATA a shader completado.
+- [x] Aislar tile shader upstream y datos triangle/scissor externos de la captura.
+- [x] Comparar grupos 32/64 sobre 1200 tiles; 128 fences y 5 MiB completos por envio.
+- [x] Validar expectativa rectangular, guardas y cinco asignaciones independientes.
+- [x] Compilar/verificar app 00.54 independiente: 28 controles; paquetes CPU51/00.53 intactos.
+- [ ] Probar primero caso 2 (64 lanes) en PS4 y contrastar caso 1 original (32 lanes).
+- [ ] Investigar dependencia span/setup y controlador segun resultados; solo integrar cambios verificados.
+
+Ver [instrucciones 00.54](docs/PARALLEL-00.54-TILES.md).
+
+## Integracion experimental: ParaLLEl 00.53
 
 - [x] Confirmar en PS4 las siete pruebas compute de 00.52: 448 envios, 896 despachos.
 - [x] Integrar juegos completos con Ari64, CXD4 y ParaLLEl-RDP original.

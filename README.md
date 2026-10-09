@@ -15,7 +15,9 @@ En esta rama, seguir el [plan de pruebas ParaLLEl-RDP](docs/PARALLEL-RDP-PLAN.md
 Paquete experimental actual: [00.53, juegos completos con ParaLLEl original](docs/PARALLEL-00.53-GAMES.md).
 Las siete pruebas compute de [00.52](docs/PARALLEL-00.52-COMPUTE.md) fueron confirmadas en PS4.
 Las comparaciones locales de Mario (cabeza y menu) usan el mismo stream RDP
-con Angrylion y ParaLLEl; estabilidad y FPS del juego completo en PS4 pendientes.
+con Angrylion y ParaLLEl. La prueba real de 00.53 vuelve a bloquear tiles
+antes del primer cuadro visible (envio 331). [00.54 aisla ese despacho](docs/PARALLEL-00.54-TILES.md);
+no es una correccion confirmada ni un nuevo paquete para jugar.
 
 Los apartados siguientes son historial de las pruebas anteriores.
 

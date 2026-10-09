@@ -20,7 +20,9 @@ void nps64_boot_result(const char *label,int result) {
     line[n]=0;nps64_boot_trace(line);
 }
 static void early_boot(void) {
-#if defined(NPS64_PARALLEL_GAME)
+#if defined(NPS64_PARALLEL_TILE_PROBE)
+    nps64_boot_trace("00.54 original tile capture before main; GPU constructors deferred");
+#elif defined(NPS64_PARALLEL_GAME)
     nps64_boot_trace("00.53 original ParaLLEl-RDP before main; GPU constructors deferred");
 #elif defined(NPS64_PARALLEL_PROBE)
     nps64_boot_trace("00.52 ParaLLEl compute gate before main; GPU constructors deferred");

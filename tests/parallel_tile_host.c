@@ -1,0 +1,16 @@
+#include "parallel_compute_probe.h"
+#include <stdio.h>
+#include <stdlib.h>
+static void report(const char *message){puts(message);fflush(stdout);}
+int main(void){
+    ParallelComputeProbe *probe=NULL;
+    if(parallel_probe_open(&probe,report))return 1;
+    if(parallel_probe_run(probe,PARALLEL_PROBE_CASES,1)!=1 ||
+       parallel_probe_run(probe,0,0)!=1 ||
+       parallel_probe_run(probe,0,PARALLEL_PROBE_REPEATS+1)!=1)return 1;
+    unsigned cases=getenv("NPS64_TILE_RECORD")?1:PARALLEL_PROBE_CASES;
+    unsigned repeats=getenv("NPS64_TILE_RECORD")?1:PARALLEL_PROBE_REPEATS;
+    for(unsigned i=0;i<cases;i++)if(parallel_probe_run(probe,i,repeats))return 1;
+    parallel_probe_close(probe);
+    puts("PASS isolated original tile capture; host only, not PS4 stability");return 0;
+}
