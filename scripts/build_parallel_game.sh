@@ -5,9 +5,9 @@ sdk=/work/toolchain/OpenOrbis/PS4Toolchain
 sysroot=/work/build/gpu/sysroot
 game=/work/build/parallel-game
 export NPS64_STAGE_DIR="$game/stage" NPS64_ELF_DIR="$game"
-export NPS64_CONTENT_ID=IV0000-NPSP00063_00-NPS64PARALLEL000
-export NPS64_TITLE_ID=NPSP00063 NPS64_TITLE='NPS64 - ParaLLEl-RDP experimental'
-export NPS64_VERSION=00.63 NPS64_VERIFY_DIR="$game/pkg-verify"
+export NPS64_CONTENT_ID=IV0000-NPSP00064_00-NPS64PARALLEL000
+export NPS64_TITLE_ID=NPSP00064 NPS64_TITLE='NPS64 - ParaLLEl-RDP experimental'
+export NPS64_VERSION=00.64 NPS64_VERIFY_DIR="$game/pkg-verify"
 export NPS64_PACKAGE_PATH="out/$NPS64_CONTENT_ID.pkg"
 mkdir -p build/parallel-game/core "$NPS64_STAGE_DIR/sce_sys" "$game/objects" out
 chmod +x scripts/ps4-gpu-cc scripts/ps4-gpu-cxx
@@ -44,6 +44,6 @@ python3 scripts/check_gpu_boot.py
 python3 scripts/assets.py
 bash scripts/package.sh
 bash scripts/verify_pkg.sh
-cp "$NPS64_PACKAGE_PATH" out/NPS64-00.63-parallel-rdp-test.pkg
-sha256sum out/NPS64-00.63-parallel-rdp-test.pkg > out/NPS64-00.63-parallel-rdp-test-SHA256.txt
+cp "$NPS64_PACKAGE_PATH" out/NPS64-00.64-parallel-rdp-test.pkg
+sha256sum out/NPS64-00.64-parallel-rdp-test.pkg > out/NPS64-00.64-parallel-rdp-test-SHA256.txt
 python3 scripts/check_parallel_game.py

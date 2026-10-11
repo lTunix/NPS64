@@ -33,3 +33,4 @@ header=header[:header.index('static const uint32_t')]+ 'static const uint32_t np
 header+='\n'.join(','.join(f'0x{w:08x}u' for w in words[i:i+8])+',' for i in range(0,len(words),8))+'\n};\n#ifdef __cplusplus\n}\n#endif\n'
 (out/'nps64_tile_split.hpp').write_text(header)
 print('PASS game binning SPIR-V; diagnostic readback binding removed')
+subprocess.run(['python3', str(root/'scripts/compile_parallel_blend.py')], check=True)

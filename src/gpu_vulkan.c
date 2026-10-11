@@ -126,6 +126,7 @@ bool nps64_gpu_begin(void) {
 #ifdef NPS64_PARALLEL_GAME
     nps64_log("[gpu] predicated tile binning=on; original raster/color/textures; subgroup=0 small_types=0\n");
     nps64_log("[gpu] split pipeline: specialized rasterization then depth/color blend; ubershader=0\n");
+    nps64_log("[gpu] depth/color blend entry: conditional coarse mask; no early return\n");
 #else
     nps64_log("[gpu] PS4 compute profile: ubershader=1 direct dispatch; subgroup=0 small_types=0\n");
 #endif

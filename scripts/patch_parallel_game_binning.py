@@ -4,6 +4,7 @@ import sys
 root=Path(sys.argv[1])/'mupen64plus-video-paraLLEl/parallel-rdp/parallel-rdp'
 (root/'shaders/nps64_tile_predicated.hpp').write_bytes(Path('/work/build/parallel-game/nps64_tile_predicated.hpp').read_bytes())
 (root/'shaders/nps64_tile_split.hpp').write_bytes(Path('/work/build/parallel-game/nps64_tile_split.hpp').read_bytes())
+(root/'shaders/nps64_blend_predicated.hpp').write_bytes(Path('/work/build/parallel-game/nps64_blend_predicated.hpp').read_bytes())
 path=root/'rdp_renderer.hpp';s=path.read_text()
 assert s.count('bool direct_binning = false;')==1
 s=s.replace('bool direct_binning = false;','bool direct_binning = false;\n\t\tbool predicated_binning = false;');path.write_text(s)
@@ -23,4 +24,16 @@ s=s.replace(anchor,'''\tif (caps.predicated_binning)
 \t}
 \telse if (caps.direct_binning)
 \t{''')
+path.write_text(s)
+s=path.read_text()
+s=s.replace('#include "shaders/nps64_tile_split.hpp"', '#include "shaders/nps64_tile_split.hpp"\n#include "shaders/nps64_blend_predicated.hpp"',1)
+anchor='\t\tcmd.set_program(shader_bank->depth_blend);'
+assert s.count(anchor)==1
+s=s.replace(anchor, '''\t\tif (caps.predicated_binning)
+\t\t{
+\t\t\tconst auto &layout = shader_bank->depth_blend->get_shader(Vulkan::ShaderStage::Compute)->get_layout();
+\t\t\tcmd.set_program(device->request_program(nps64_blend_predicated_spirv, sizeof(nps64_blend_predicated_spirv), &layout));
+\t\t}
+\t\telse
+\t\t\tcmd.set_program(shader_bank->depth_blend);''')
 path.write_text(s)
