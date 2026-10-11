@@ -36,3 +36,40 @@ resolver la compatibilidad de carga y las APIs GNM utilizadas por nuestro
 winsys; hasta entonces la consola sigue siendo necesaria para ese bloqueo.
 
 Referencia: [release oficial shadPS4 0.19.0](https://github.com/shadps4-emu/shadPS4/releases/tag/v.0.19.0).
+
+## Probe con imports GNM directos
+
+Se construyó y ejecutó un eboot adicional, exclusivamente local, que importa
+`sceGnmSubmitCommandBuffers`, `sceGnmSubmitDone` y `sceGnmAddEqEvent` mediante
+los stubs del SDK. shadPS4 resuelve estos imports con sus implementaciones HLE.
+Se omite la búsqueda de funciones de captura de fallos del firmware en este
+probe: no hay un módulo de firmware ni se inventa un handle.
+
+```powershell
+docker run --rm --mount "type=bind,source=$($PWD.Path),target=/work" -w /work nps64-gpu-builder:local python3 scripts/build_shadps4_probe.py
+./scripts/test_ps4_emulator_windows.ps1 -Eboot 'build/shadps4/probe/stage/eboot.bin'
+```
+
+Requiere los objetos y Mesa del build normal ya construidos. El script copia
+el staging y reconstruye únicamente el objeto winsys y su archive en
+`build/shadps4/probe`; no altera las librerías ni el paquete de consola.
+
+Resultado observado: `virtual query check ok`, `device initialized`, carga
+de ParaLLEl y `submit 1` con tres IBs. La importación de RDRAM mediante
+`VK_EXT_external_memory_host` falla, por lo que ParaLLEl utiliza su ruta de
+copia de memoria; esto no es fallback al rasterizador CPU.
+
+shadPS4 aborta en su procesador GPU con:
+
+```text
+Unknown PM4 type 3 opcode 0x43 with count 4
+```
+
+El opcode corresponde al paquete `SURFACE_SYNC` emitido por nuestro RADV
+GCN7. El siguiente requisito es implementar correctamente ese paquete en
+shadPS4; omitirlo no validaría la sincronización. Todavía no hay cuadros ROM
+renderizados por ParaLLEl en este entorno ni reproducción del hang de PS4.
+
+Logs locales: `build/shadps4/results/gnm-imports-shad.log` y
+`gnm-imports-nps64.log`. El log de NPS64 es acumulativo; este ensayo comienza
+en la última aparición de `shadPS4 probe: direct GNM HLE imports`.
