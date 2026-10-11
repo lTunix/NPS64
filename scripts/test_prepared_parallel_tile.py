@@ -31,7 +31,11 @@ with (out/'host.log').open('w') as log:
     subprocess.run([str(out/'host')],env=env,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=90)
 log=(out/'host.log').read_text()
 assert 'VUID-' not in log and 'Validation Error' not in log
-assert log.count('COMPLETE case=')==256 and log.count('PASS case=')==4
+assert log.count('COMPLETE case=')==320 and log.count('PASS case=')==5
 assert log.count('COMPILE pipeline case=0 local=32 begin')==1
 assert log.count('COMPILE pipeline case=1 local=64 begin')==1
-print('PASS preserved capture hashes, SPIR-V, lazy pipeline compilation, 256 fences and complete guards; host only')
+assert log.count('COMPILE pipeline case=4 local=32 begin')==1
+for count in (0,1,31,32,33,63,65,255,256):
+    for quadrants in (0,1):
+        assert f'STRESS primitives={count} groups={(count+31)//32} quadrant_scissors={quadrants}' in log
+print('PASS preserved capture hashes, SPIR-V, lazy pipeline compilation, 320 fences and complete guards; host only')

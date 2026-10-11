@@ -28,7 +28,8 @@ struct ParallelComputeProbe {
 };
 const char *parallel_probe_case_name(unsigned index) {
  static const char *names[]={"RDP original / 32 lanes","RDP original / 64 lanes (candidate)",
-  "Direct tiles / no shared LDS / atomics","Direct tiles / stores / one-group fixture only"};
+  "Direct tiles / no shared LDS / atomics","Direct tiles / stores / one-group fixture only",
+  "Direct tiles / 0..256 primitives / concurrent groups"};
  return index<PARALLEL_PROBE_CASES?names[index]:"invalid";
 }
 static void report(ParallelComputeProbe *p,const char *format,...) {
@@ -132,8 +133,8 @@ int parallel_probe_open(ParallelComputeProbe **output,ParallelProbeReport callba
     report(p,"READY isolated first tile stage: 320x239, one primitive; original 32 vs candidate 64");return 0;
 }
 static int prepare_pipeline(ParallelComputeProbe *p,unsigned index){
-    const uint32_t *codes[]={tile_spv32,tile_spv64,tile_spv_direct_atomic,tile_spv_direct_store};
-    const size_t bytes[]={sizeof(tile_spv32),sizeof(tile_spv64),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_store)};
+    const uint32_t *codes[]={tile_spv32,tile_spv64,tile_spv_direct_atomic,tile_spv_direct_store,tile_spv_direct_atomic};
+    const size_t bytes[]={sizeof(tile_spv32),sizeof(tile_spv64),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_store),sizeof(tile_spv_direct_atomic)};
     unsigned i=index;
     {
         VkShaderModuleCreateInfo smci={.sType=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,.codeSize=bytes[i],.pCode=codes[i]};
@@ -149,6 +150,38 @@ static int prepare_pipeline(ParallelComputeProbe *p,unsigned index){
         report(p,"COMPILE pipeline case=%u complete",i);
     }
     return 0;
+}
+/* Independent CPU oracle for a captured full-screen rectangle. Tile-aligned
+ * quadrant scissors provide distinct masks without copying shader logic. */
+static void stress_fixture(uint32_t *expected,unsigned count,unsigned quadrants) {
+    uint32_t *scissors=(uint32_t*)((char*)expected+SLOT_BYTES);
+    uint32_t *mask=(uint32_t*)((char*)expected+3*SLOT_BYTES);
+    uint32_t *coarse=(uint32_t*)((char*)expected+4*SLOT_BYTES);
+    memset(mask,0,sizes[3]);memset(coarse,0,sizes[4]);
+    for(unsigned primitive=0;primitive<256;primitive++){
+        memcpy(expected+primitive*8,tile_triangle,32);
+        uint32_t *scissor=scissors+primitive*4;
+        if(!quadrants)memcpy(scissor,tile_scissor,16);
+        else{
+            unsigned right=primitive&1,bottom=(primitive>>1)&1;
+            scissor[0]=right?640:0;scissor[1]=bottom?480:0;
+            scissor[2]=right?1280:640;scissor[3]=bottom?960:480;
+        }
+    }
+    for(unsigned y=0;y<30;y++)for(unsigned x=0;x<40;x++){
+        unsigned tile=y*128+x;
+        for(unsigned primitive=0;primitive<count;primitive++){
+            /* The captured FILL/COPY rectangle has an inclusive X scissor:
+             * x=160 belongs to both horizontal halves (tile 20). */
+            if(quadrants){
+                unsigned right=primitive&1,bottom=(primitive>>1)&1;
+                if((right?x<20:x>20)||(bottom?y<15:y>=15))continue;
+            }
+            unsigned group=primitive/32;
+            mask[tile*8+group]|=1u<<(primitive&31);
+            coarse[tile]|=1u<<group;
+        }
+    }
 }
 int parallel_probe_run(ParallelComputeProbe *p,unsigned index,unsigned repeats) {
     if(!p||p->failed||index>=PARALLEL_PROBE_CASES||!repeats||repeats>PARALLEL_PROBE_REPEATS)return 1;
@@ -168,6 +201,14 @@ int parallel_probe_run(ParallelComputeProbe *p,unsigned index,unsigned repeats) 
     memcpy((char*)expected+4*SLOT_BYTES,tile_expected_coarse,sizeof(tile_expected_coarse));
     report(p,"BEGIN case=%u %s groups=1x5x%u repeats=%u",index,parallel_probe_case_name(index),index==1?4:8,repeats);
     for(unsigned r=0;r<repeats;r++){
+        static const unsigned counts[]={0,1,31,32,33,63,65,255,256};
+        unsigned primitives=index==4?counts[r%9]:1;
+        unsigned groups=(primitives+31)/32;
+        if(index==4){
+            unsigned quadrants=(r/9)&1;
+            stress_fixture(expected,primitives,quadrants);
+            report(p,"STRESS primitives=%u groups=%u quadrant_scissors=%u",primitives,groups,quadrants);
+        }
         for(unsigned i=0;i<5;i++)memcpy(p->mapped[i],(char*)expected+i*SLOT_BYTES,SLOT_BYTES);
         memset(p->mapped[3],0,sizes[3]);memset(p->mapped[4],0,sizes[4]);
         TRY(vkResetCommandBuffer(p->cmd,0));
@@ -176,8 +217,8 @@ int parallel_probe_run(ParallelComputeProbe *p,unsigned index,unsigned repeats) 
         vkCmdPipelineBarrier(p->cmd,VK_PIPELINE_STAGE_HOST_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&upload,0,NULL,0,NULL);
         vkCmdBindPipeline(p->cmd,VK_PIPELINE_BIND_POINT_COMPUTE,p->pipelines[index]);
         vkCmdBindDescriptorSets(p->cmd,VK_PIPELINE_BIND_POINT_COMPUTE,p->layout,0,1,&p->set,0,NULL);
-        const uint32_t registers[]={320,239,1};vkCmdPushConstants(p->cmd,p->layout,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(registers),registers);
-        vkCmdDispatch(p->cmd,1,5,index==1?4:8);
+        const uint32_t registers[]={320,239,primitives};vkCmdPushConstants(p->cmd,p->layout,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(registers),registers);
+        vkCmdDispatch(p->cmd,groups,5,index==1?4:8);
         VkMemoryBarrier download={.sType=VK_STRUCTURE_TYPE_MEMORY_BARRIER,.srcAccessMask=VK_ACCESS_SHADER_WRITE_BIT,.dstAccessMask=VK_ACCESS_HOST_READ_BIT};
         vkCmdPipelineBarrier(p->cmd,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,1,&download,0,NULL,0,NULL);
         TRY(vkEndCommandBuffer(p->cmd));

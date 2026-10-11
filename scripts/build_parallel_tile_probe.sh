@@ -5,9 +5,9 @@ sdk=/work/toolchain/OpenOrbis/PS4Toolchain
 sysroot=/work/build/gpu/sysroot
 probe=/work/build/parallel-tile-probe
 export NPS64_STAGE_DIR="$probe/stage" NPS64_ELF_DIR="$probe"
-export NPS64_CONTENT_ID=IV0000-NPSP00057_00-NPS64PARALLEL000
-export NPS64_TITLE_ID=NPSP00057 NPS64_TITLE='NPS64 - ParaLLEl tile capture'
-export NPS64_VERSION=00.57 NPS64_VERIFY_DIR="$probe/pkg-verify"
+export NPS64_CONTENT_ID=IV0000-NPSP00058_00-NPS64PARALLEL000
+export NPS64_TITLE_ID=NPSP00058 NPS64_TITLE='NPS64 - ParaLLEl tile capture'
+export NPS64_VERSION=00.58 NPS64_VERIFY_DIR="$probe/pkg-verify"
 export NPS64_PACKAGE_PATH="out/$NPS64_CONTENT_ID.pkg"
 mkdir -p "$probe" "$NPS64_STAGE_DIR/sce_sys" out
 python3 scripts/prepare_tile_direct_probe.py
@@ -48,5 +48,5 @@ python3 scripts/check_gpu_boot.py --hle-probe
 python3 scripts/assets.py
 bash scripts/package.sh
 bash scripts/verify_pkg.sh
-cp "$NPS64_PACKAGE_PATH" out/NPS64-00.57-parallel-tile-probe.pkg
+cp "$NPS64_PACKAGE_PATH" out/NPS64-00.58-parallel-tile-probe.pkg
 python3 scripts/check_parallel_tile_probe.py

@@ -18,7 +18,7 @@ AMDGPU_GPU_ID=bonaire LD_PRELOAD="$shim" \
 python3 - <<'PY'
 from pathlib import Path
 log=Path('build/parallel-tile-probe/aco-bonaire.log').read_text()
-for case in (0,1,2,3):
+for case in (0,1,2,3,4):
     assert f'COMPILE ONLY case={case} complete' in log, log
 assert 'SUBMIT' not in log and 'COMPLETE case=' not in log, log
 assert 'PASS AMD compilation only' in log, log
