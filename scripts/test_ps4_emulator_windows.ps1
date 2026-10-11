@@ -1,6 +1,7 @@
 param(
     [string]$Eboot = 'build/parallel-game/stage/eboot.bin',
-    [string]$Rom = ''
+    [string]$Rom = '',
+    [string]$Emulator = 'shadPS4.exe'
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -18,6 +19,7 @@ if (!(Test-Path "$runtime/shadPS4.exe")) {
     Expand-Archive -LiteralPath $archive -DestinationPath $runtime -Force
 }
 $binary = (Resolve-Path -LiteralPath (Join-Path $root $Eboot)).Path
+$executable = (Resolve-Path -LiteralPath (Join-Path $runtime $Emulator)).Path
 if ($Rom) {
     $source = (Resolve-Path -LiteralPath $Rom).Path
     New-Item -ItemType Directory -Force -Path "$runtime/user/data/NPS64/games" | Out-Null
@@ -30,5 +32,5 @@ Set-Content -LiteralPath "$diagnostics/diagnostics.cfg" -Value 'NPS64DIAG5 6 0 0
 Write-Host 'Interactive test: select the ROM with N (Cross). Logs: build/shadps4/runtime/user'
 Write-Host 'CPU fallback is not evidence that ParaLLEl RDP or PS4 GPU synchronization passes.'
 Push-Location $runtime
-try { & "$runtime/shadPS4.exe" -g $binary --config-clean }
+try { & $executable -g $binary --config-clean }
 finally { Pop-Location }

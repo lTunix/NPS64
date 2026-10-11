@@ -73,3 +73,49 @@ renderizados por ParaLLEl en este entorno ni reproducción del hang de PS4.
 Logs locales: `build/shadps4/results/gnm-imports-shad.log` y
 `gnm-imports-nps64.log`. El log de NPS64 es acumulativo; este ensayo comienza
 en la última aparición de `shadPS4 probe: direct GNM HLE imports`.
+
+## Emulador local adaptado a Mesa (continuación)
+
+Se compiló shadPS4 0.19.0 desde el commit
+`c7e065d1b415be16c23e260a21f1dd8bbfc4cb57`, con LLVM 19.1.7 portable,
+MSVC/Windows SDK y Ninja. Requiere Visual Studio 2022 con herramientas C++,
+CMake, Python y 7-Zip. Fuentes, herramientas y ejecutables quedan en `build/`.
+
+```powershell
+./scripts/setup_shadps4_windows.ps1
+./scripts/build_shadps4_windows.ps1
+docker run --rm --mount "type=bind,source=$($PWD.Path),target=/work" -w /work nps64-gpu-builder:local python3 scripts/build_shadps4_probe.py
+./scripts/test_ps4_emulator_windows.ps1 -Eboot 'build/shadps4/probe/stage/eboot.bin' -Emulator 'shadPS4-surface-sync.exe'
+```
+
+El parche reproducible implementa `SURFACE_SYNC` mediante una barrera Vulkan
+global y espera de finalización, permite inferir dimensiones cuando Mesa no
+envía los NOP opcionales de Sony y traduce máscaras dinámicas `V_CMP_CLASS`
+mediante los bits IEEE-754, incluyendo ceros con signo, subnormales y NaNs.
+La barrera es conservadora: no reproduce las cachés Liverpool ni sirve para
+medir rendimiento de PS4. El ejecutable oficial permanece separado.
+
+El probe agrega únicamente en su copia local de Mesa un trailer `OrbShdr`
+con longitud y hash del shader compilado, conservando las instrucciones.
+Esto satisface el formato de identificación requerido por shadPS4. Los
+archives y el PKG de consola no reciben estos cambios.
+
+Resultado de la ejecución: ParaLLEl activo, ROM cargada y envío 5 completado
+(`GPU completed 4` al enviar 5). Superó los abortos anteriores por opcode
+0x43, metadata de shader, NOP de framebuffer y clasificación de flotantes.
+La siguiente compilación de compute se detiene en:
+
+```text
+flatten_extended_userdata_pass.cpp:833 FlattenExtendedUserdataPass:
+ReadConst base high not from constant memory
+```
+
+También aparecen avisos de tamaños de buffers limitados por shadPS4. El
+siguiente trabajo requiere compatibilizar su análisis de direcciones y
+descriptores con los shaders Mesa. No se omitió esa comprobación ni se
+inventó una dirección para continuar. Todavía no se obtuvo un cuadro ROM
+Vulkan, una comparación visual ni una reproducción del hang de envío 37.
+
+Evidencia local: `build/shadps4/results/class-mask-shad.log` y
+`class-mask-nps64.log`; etapas anteriores `surface-sync-*`, `metadata-*`,
+`extent-*` y `ssa-*`. El build nativo e incremental terminó correctamente.
