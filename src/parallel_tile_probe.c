@@ -29,7 +29,8 @@ struct ParallelComputeProbe {
 const char *parallel_probe_case_name(unsigned index) {
  static const char *names[]={"RDP original / 32 lanes","RDP original / 64 lanes (candidate)",
   "Direct tiles / no shared LDS / atomics","Direct tiles / stores / one-group fixture only",
-  "Direct tiles / 0..256 primitives / concurrent groups"};
+  "Direct tiles / 0..256 primitives / concurrent groups",
+  "Direct tiles / same stress / GPU input uploads"};
  return index<PARALLEL_PROBE_CASES?names[index]:"invalid";
 }
 static void report(ParallelComputeProbe *p,const char *format,...) {
@@ -95,7 +96,7 @@ int parallel_probe_open(ParallelComputeProbe **output,ParallelProbeReport callba
     /* Separate allocations reproduce the distinct input/output BOs of RDP. */
     for(unsigned binding=0;binding<5;binding++){
         VkBufferCreateInfo bci={.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size=SLOT_BYTES,.usage=VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,.sharingMode=VK_SHARING_MODE_EXCLUSIVE};
+            .size=SLOT_BYTES,.usage=VK_BUFFER_USAGE_STORAGE_BUFFER_BIT|VK_BUFFER_USAGE_TRANSFER_DST_BIT,.sharingMode=VK_SHARING_MODE_EXCLUSIVE};
         TRY(vkCreateBuffer(p->device,&bci,NULL,&p->buffers[binding]));
         VkMemoryRequirements req;vkGetBufferMemoryRequirements(p->device,p->buffers[binding],&req);
         unsigned mt=mp.memoryTypeCount;
@@ -133,8 +134,8 @@ int parallel_probe_open(ParallelComputeProbe **output,ParallelProbeReport callba
     report(p,"READY isolated first tile stage: 320x239, one primitive; original 32 vs candidate 64");return 0;
 }
 static int prepare_pipeline(ParallelComputeProbe *p,unsigned index){
-    const uint32_t *codes[]={tile_spv32,tile_spv64,tile_spv_direct_atomic,tile_spv_direct_store,tile_spv_direct_atomic};
-    const size_t bytes[]={sizeof(tile_spv32),sizeof(tile_spv64),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_store),sizeof(tile_spv_direct_atomic)};
+    const uint32_t *codes[]={tile_spv32,tile_spv64,tile_spv_direct_atomic,tile_spv_direct_store,tile_spv_direct_atomic,tile_spv_direct_atomic};
+    const size_t bytes[]={sizeof(tile_spv32),sizeof(tile_spv64),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_store),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_atomic)};
     unsigned i=index;
     {
         VkShaderModuleCreateInfo smci={.sType=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,.codeSize=bytes[i],.pCode=codes[i]};
@@ -202,9 +203,9 @@ int parallel_probe_run(ParallelComputeProbe *p,unsigned index,unsigned repeats) 
     report(p,"BEGIN case=%u %s groups=1x5x%u repeats=%u",index,parallel_probe_case_name(index),index==1?4:8,repeats);
     for(unsigned r=0;r<repeats;r++){
         static const unsigned counts[]={0,1,31,32,33,63,65,255,256};
-        unsigned primitives=index==4?counts[r%9]:1;
+        unsigned primitives=index>=4?counts[r%9]:1;
         unsigned groups=(primitives+31)/32;
-        if(index==4){
+        if(index>=4){
             unsigned quadrants=(r/9)&1;
             stress_fixture(expected,primitives,quadrants);
             report(p,"STRESS primitives=%u groups=%u quadrant_scissors=%u",primitives,groups,quadrants);
@@ -215,6 +216,14 @@ int parallel_probe_run(ParallelComputeProbe *p,unsigned index,unsigned repeats) 
         VkCommandBufferBeginInfo begin={.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};TRY(vkBeginCommandBuffer(p->cmd,&begin));
         VkMemoryBarrier upload={.sType=VK_STRUCTURE_TYPE_MEMORY_BARRIER,.srcAccessMask=VK_ACCESS_HOST_WRITE_BIT,.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT};
         vkCmdPipelineBarrier(p->cmd,VK_PIPELINE_STAGE_HOST_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,1,&upload,0,NULL,0,NULL);
+        if(index==5){
+            VkMemoryBarrier before={.sType=VK_STRUCTURE_TYPE_MEMORY_BARRIER,.srcAccessMask=VK_ACCESS_HOST_WRITE_BIT,.dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT};
+            vkCmdPipelineBarrier(p->cmd,VK_PIPELINE_STAGE_HOST_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,1,&before,0,NULL,0,NULL);
+            vkCmdUpdateBuffer(p->cmd,p->buffers[0],0,sizes[0],expected);
+            vkCmdUpdateBuffer(p->cmd,p->buffers[1],0,sizes[1],(char*)expected+SLOT_BYTES);
+            VkMemoryBarrier after={.sType=VK_STRUCTURE_TYPE_MEMORY_BARRIER,.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT,.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_HOST_READ_BIT};
+            vkCmdPipelineBarrier(p->cmd,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT|VK_PIPELINE_STAGE_HOST_BIT,0,1,&after,0,NULL,0,NULL);
+        }
         vkCmdBindPipeline(p->cmd,VK_PIPELINE_BIND_POINT_COMPUTE,p->pipelines[index]);
         vkCmdBindDescriptorSets(p->cmd,VK_PIPELINE_BIND_POINT_COMPUTE,p->layout,0,1,&p->set,0,NULL);
         const uint32_t registers[]={320,239,primitives};vkCmdPushConstants(p->cmd,p->layout,VK_SHADER_STAGE_COMPUTE_BIT,0,sizeof(registers),registers);
@@ -236,7 +245,17 @@ int parallel_probe_run(ParallelComputeProbe *p,unsigned index,unsigned repeats) 
         }
 #endif
         for(unsigned i=0;i<TOTAL_BYTES/4;i++)if(p->mapped[i/(SLOT_BYTES/4)][i%(SLOT_BYTES/4)]!=expected[i]){
-            p->failed=1;report(p,"FAIL case=%u repeat=%u word=%u actual=%08x expected=%08x",index,r,i,p->mapped[i/(SLOT_BYTES/4)][i%(SLOT_BYTES/4)],expected[i]);free(expected);return 1;
+            p->failed=1;report(p,"FAIL case=%u repeat=%u word=%u actual=%08x expected=%08x",index,r,i,p->mapped[i/(SLOT_BYTES/4)][i%(SLOT_BYTES/4)],expected[i]);
+#ifdef __ORBIS__
+            for(unsigned buffer=0;buffer<5;buffer++){
+                char path[160];snprintf(path,sizeof(path),"/data/NPS64-Parallel/tile-fail-case%u-buffer%u.bin",index,buffer);
+                FILE *file=fopen(path,"wb");
+                if(file){size_t written=fwrite(p->mapped[buffer],1,SLOT_BYTES,file);int closed=fclose(file);
+                    report(p,"CAPTURE buffer=%u bytes=%zu close=%d path=%s",buffer,written,closed,path);}
+                else report(p,"CAPTURE failed buffer=%u",buffer);
+            }
+#endif
+            free(expected);return 1;
         }
         TRY(vkResetFences(p->device,1,&p->fence));report(p,"COMPLETE case=%u repeat=%u fence=success all 5 MiB masks, inputs and guards exact",index,r);
     }

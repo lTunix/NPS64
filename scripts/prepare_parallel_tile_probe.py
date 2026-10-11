@@ -49,24 +49,7 @@ def header(mask,coarse):
     text+=array('tile_expected_mask',mask,True)+array('tile_expected_coarse',coarse,True)
     (out/'parallel_tile_data.h').write_text(text)
 
-# Same static RADV dispatch mechanism as the earlier PS4 compute gate.
-source=(root/'src/parallel_tile_probe.c').read_text()
-functions=set(re.findall(r'\b(vk[A-Z]\w+)\s*\(',source))
-global_names={'vkCreateInstance'}
-instance_names={'vkDestroyInstance','vkEnumeratePhysicalDevices','vkGetPhysicalDeviceProperties','vkGetPhysicalDeviceFeatures2',
- 'vkGetPhysicalDeviceQueueFamilyProperties','vkGetPhysicalDeviceMemoryProperties','vkCreateDevice'}
-assert global_names|instance_names<=functions
-dispatch='#pragma once\nextern PFN_vkVoidFunction vk_icdGetInstanceProcAddr(VkInstance,const char*);\nstatic PFN_vkGetDeviceProcAddr parallel_gdpa;\n'
-for name in sorted(functions):dispatch+=f'static PFN_{name} parallel_{name};\n#define {name} parallel_{name}\n'
-for phase,selected in [('global',global_names),('instance',instance_names),('device',functions-global_names-instance_names)]:
-    argument={'global':'void','instance':'VkInstance instance','device':'VkDevice device'}[phase]
-    dispatch+=f'static int parallel_load_{phase}({argument}){{\n'
-    if phase=='instance':dispatch+='parallel_gdpa=(PFN_vkGetDeviceProcAddr)vk_icdGetInstanceProcAddr(instance,"vkGetDeviceProcAddr");if(!parallel_gdpa)return 0;\n'
-    for name in sorted(selected):
-        loader='parallel_gdpa(device,' if phase=='device' else 'vk_icdGetInstanceProcAddr('+('instance,' if phase=='instance' else 'VK_NULL_HANDLE,')
-        dispatch+=f'parallel_{name}=(PFN_{name}){loader}"{name}");if(!parallel_{name})return 0;\n'
-    dispatch+='return 1;\n}\n'
-(out/'parallel_probe_dispatch.h').write_text(dispatch)
+subprocess.run([sys.executable,str(root/'scripts/prepare_tile_dispatch.py')],check=True)
 
 def compile_host():
     subprocess.run(['clang-21','-std=c11','-O2','-Wall','-Wextra','-Werror','-DNPS64_PARALLEL_TILE_PROBE',
@@ -94,6 +77,6 @@ with (out/'host.log').open('w') as log:
     subprocess.run([str(out/'host')],env=env,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=90)
 log=(out/'host.log').read_text()
 assert 'VUID-' not in log and 'Validation Error' not in log
-assert log.count('COMPLETE case=')==320 and log.count('PASS case=')==5
+assert log.count('COMPLETE case=')==384 and log.count('PASS case=')==6
 (out/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
-print('PASS original tile32/tile64 and direct diagnostic variants: 320 fences; all masks, inputs and guards exact; no Vulkan validation errors; host only')
+print('PASS original tile32/tile64 and direct diagnostic variants: 384 fences; all masks, inputs and guards exact; no Vulkan validation errors; host only')
