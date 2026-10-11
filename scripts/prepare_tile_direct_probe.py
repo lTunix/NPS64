@@ -1,6 +1,6 @@
 """Diagnostic tile variants; retain original fixture/reference unchanged."""
 from pathlib import Path
-import struct, subprocess
+import struct, subprocess, re
 root=Path('/work');out=root/'build/parallel-tile-probe'
 includes=root/'vendor/parallel-n64/mupen64plus-video-paraLLEl/parallel-rdp/parallel-rdp/shaders'
 source=(includes/'tile_binning_combined.comp').read_text()
@@ -34,8 +34,16 @@ header='#pragma once\n#include <stdint.h>\n'
 for name,coarse in [
  ('direct_atomic','if (mask != 0u) atomicOr(binned_bitmask_coarse[linear_tile], 1u << group_index); else atomicAnd(binned_bitmask_coarse[linear_tile], ~(1u << group_index));'),
  # Unique writer only because the isolated fixture dispatches ONE primitive group.
- ('direct_store','binned_bitmask_coarse[linear_tile] = mask != 0u ? 1u : 0u;')]:
- path=out/f'tile-{name}.comp';path.write_text(prefix+body.replace('COARSE_WRITE',coarse))
+ ('direct_store','binned_bitmask_coarse[linear_tile] = mask != 0u ? 1u : 0u;'),
+ ('direct_volatile','if (mask != 0u) atomicOr(binned_bitmask_coarse[linear_tile], 1u << group_index); else atomicAnd(binned_bitmask_coarse[linear_tile], ~(1u << group_index));')]:
+ glsl=prefix+body.replace('COARSE_WRITE',coarse)
+ if name=='direct_volatile':
+  glsl=glsl.replace('readonly buffer TriangleSetupBuffer','volatile readonly buffer TriangleSetupBuffer').replace('readonly buffer ScissorStateBuffer','volatile readonly buffer ScissorStateBuffer')
+  glsl,n=re.subn(r'layout\(set = 0, binding = 2, std430\) readonly buffer StateIndicesBuffer\s*\{.*?\}\s*state_indices;',
+   'layout(set = 0, binding = 2, std430) buffer InputTrace { uvec4 scissor_trace[]; };',glsl,flags=re.S)
+  assert n==1
+  glsl=glsl.replace('    uint mask = 0u;', '    if (local_index == 0u && group_index * 32u < uint(fb_info.primitive_count))\n        scissor_trace[group_index] = uvec4(scissor_state.elems[group_index * 32u]);\n    uint mask = 0u;')
+ path=out/f'tile-{name}.comp';path.write_text(glsl)
  spv=out/f'tile-{name}.spv'
  subprocess.run([str(root/'build/gpu/glslang-host/StandAlone/glslang'),'-V','--target-env','vulkan1.1',
   '-I'+str(includes),'-DUBERSHADER=1','-DSMALL_TYPES=0','-DSUBGROUP=0','-DDEBUG_ENABLE=0',str(path),'-o',str(spv)],check=True)
