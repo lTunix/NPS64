@@ -586,7 +586,7 @@ static void menu_draw(void) {
     rect(0,0,SCREEN_W,5,accent[theme]);
     platform_text(64,40,"NPS64",accent[theme],4);
 #ifdef NPS64_PARALLEL_GAME
-    platform_text(64,115,"PARALLEL 00.62   |   NINTENDO 64   |   PS4",0xffadbcd2,2);
+    platform_text(64,115,"PARALLEL 00.63   |   NINTENDO 64   |   PS4",0xffadbcd2,2);
 #else
     platform_text(64,115,"BIBLIOTECA     |     NINTENDO 64     |     PS4",0xffadbcd2,2);
 #endif
@@ -644,7 +644,7 @@ int main(void) {
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
     nps64_log_init(DATA_ROOT "/nps64.log");
 #if defined(NPS64_PARALLEL_GAME)
-    nps64_log("NPS64 00.62 ParaLLEl-RDP original / experimental game build\n");
+    nps64_log("NPS64 00.63 ParaLLEl-RDP original / experimental game build\n");
 #elif defined(NPS64_HLE_GAME)
     nps64_log("NPS64 00.38 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)

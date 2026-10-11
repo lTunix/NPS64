@@ -107,7 +107,12 @@ bool nps64_gpu_begin(void) {
 #endif
     /* The first real RDP compute workload hangs with both specialized and
        direct dispatch. Retain the direct path while diagnosing GNM visibility. */
-    if(setenv("PARALLEL_RDP_UBERSHADER","1",1) ||
+#ifdef NPS64_PARALLEL_GAME
+    const char *uber_mode = "0";
+#else
+    const char *uber_mode = "1";
+#endif
+    if(setenv("PARALLEL_RDP_UBERSHADER",uber_mode,1) ||
        setenv("PARALLEL_RDP_SUBGROUP","0",1) ||
        setenv("PARALLEL_RDP_SMALL_TYPES","0",1) ||
        setenv("PARALLEL_RDP_FORCE_SYNC_SHADER","1",1) ||
@@ -120,6 +125,7 @@ bool nps64_gpu_begin(void) {
     nps64_log("[gpu] conservative compute: serialized setup and single-flight submissions\n");
 #ifdef NPS64_PARALLEL_GAME
     nps64_log("[gpu] predicated tile binning=on; original raster/color/textures; subgroup=0 small_types=0\n");
+    nps64_log("[gpu] split pipeline: specialized rasterization then depth/color blend; ubershader=0\n");
 #else
     nps64_log("[gpu] PS4 compute profile: ubershader=1 direct dispatch; subgroup=0 small_types=0\n");
 #endif
