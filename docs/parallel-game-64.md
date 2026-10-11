@@ -27,3 +27,29 @@ estado VI y tamaño 640x288 coincidentes, error máximo 1/255 por canal en
 las cuatro. Cuadro 600 revisado visualmente. Artefactos en
 `build/parallel-comparison/mario-64-blend/`. PKG: 28 comprobaciones aprobadas.
 La prueba real de PS4 permanece pendiente.
+
+## Resultado PS4: bloqueo reproducido
+
+Los nuevos logs de 00.64 vuelven a mostrar envío 331/completado 330 y
+traza final 11. La reescritura del descarte no solucionó el bloqueo. La
+compilación del shader nuevo aparece en el log, pero compilar con éxito
+no demuestra que sus instrucciones se ejecuten correctamente.
+
+`scripts/analyze_parallel_blend_capture.py` audita las capturas posteriores
+al bloqueo. En este lote: 1.200 tiles activos (40x30), máscaras gruesas y
+finas coincidentes, offsets únicos 0..1199 y conteo indirecto 1.200.
+Las 76.800 lecturas de cobertura calculadas caben en su buffer: 76.160
+bytes son FILL (64) y 640 son rechazo (255). Las ocho comprobaciones pasan.
+Esto descarta corrupción visible de esas estructuras en esta captura;
+no prueba visibilidad/coherencia durante la ejecución GPU ni corrección
+del código máquina o de las escrituras al framebuffer.
+
+Reproducción: `python scripts/analyze_parallel_blend_capture.py logs
+build/parallel-blend-analysis-64`. Los datos derivados de ROM se conservan
+únicamente en logs/build ignorados. El reporte incluye hashes de las
+capturas para identificar exactamente la evidencia analizada.
+
+El bloqueo sigue sin resolver. Hace falta una prueba aislada de la etapa
+de mezcla con estos buffers para distinguir lecturas, escrituras de
+framebuffer, máscaras y sincronización; otra comparación visual de ROM
+en Lavapipe no reproduce ese fallo de ejecución PS4.
