@@ -7,6 +7,9 @@
 #include "parallel_compute_probe.h"
 #include "parallel_tile_data.h"
 #include "parallel_tile_direct_data.h"
+#ifdef NPS64_GAME_BINNING_TEST
+#include "nps64_tile_predicated.hpp"
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -137,7 +140,10 @@ int parallel_probe_open(ParallelComputeProbe **output,ParallelProbeReport callba
 }
 static int prepare_pipeline(ParallelComputeProbe *p,unsigned index){
     const uint32_t *codes[]={tile_spv32,tile_spv64,tile_spv_direct_atomic,tile_spv_direct_store,tile_spv_direct_atomic,tile_spv_direct_atomic,tile_spv_direct_volatile,tile_spv_direct_predicated};
-    const size_t bytes[]={sizeof(tile_spv32),sizeof(tile_spv64),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_store),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_volatile),sizeof(tile_spv_direct_predicated)};
+    size_t bytes[]={sizeof(tile_spv32),sizeof(tile_spv64),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_store),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_volatile),sizeof(tile_spv_direct_predicated)};
+#ifdef NPS64_GAME_BINNING_TEST
+    codes[4]=nps64_tile_predicated_spirv;bytes[4]=sizeof(nps64_tile_predicated_spirv);
+#endif
     unsigned i=index;
     {
         VkShaderModuleCreateInfo smci={.sType=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,.codeSize=bytes[i],.pCode=codes[i]};

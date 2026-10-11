@@ -46,7 +46,7 @@ for path in sorted((root/'gpu').glob('frame-*.ppm'),key=lambda p:int(p.stem.spli
  for y in range(h):
   for i,data in enumerate((cpu,gpu,delta)):panel[y*w*9+i*w*3:y*w*9+(i+1)*w*3]=data[y*w*3:(y+1)*w*3]
  png(root/(path.stem+'-comparison.png'),w*3,h,panel)
- sections.append('<h2>VI '+str(frame)+'</h2><p>'+html.escape(json.dumps(item))+'</p><div class="row">'+''.join('<figure><figcaption>'+label+'</figcaption><img src="'+path.stem+'-'+name+'.png"></figure>' for label,name in (('Angrylion CPU','cpu'),('ParaLLEl-RDP original','gpu'),('Diferencia x8','diff')))+'</div>')
+ sections.append('<h2>VI '+str(frame)+'</h2><p>'+html.escape(json.dumps(item))+'</p><div class="row">'+''.join('<figure><figcaption>'+label+'</figcaption><img src="'+path.stem+'-'+name+'.png"></figure>' for label,name in (('Angrylion CPU','cpu'),('ParaLLEl-RDP','gpu'),('Diferencia x8','diff')))+'</div>')
  report.append(item);print(json.dumps(item))
 assert report
 (root/'report.json').write_text(json.dumps(dict(host_only=True,same_rdp_stream=a.same_stream,frames=report),indent=2)+'\n')

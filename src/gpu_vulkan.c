@@ -95,8 +95,9 @@ bool nps64_gpu_begin(void) {
 #if defined(__ORBIS__) || defined(NPS64_TEST_PS4_GPU_PROFILE)
     /* Host can select the upstream shader for exact image comparisons. */
 #if defined(NPS64_PARALLEL_GAME)
-    /* Preserve original ParaLLEl shaders; old diagnostic replacements stay off. */
+    /* PS4-validated binning; retain original rasterization and texture shaders. */
     if(setenv("NPS64_RDP_DIRECT_BINNING","0",1) || setenv("NPS64_RDP_COLOR_ONLY","0",1))return false;
+    if(setenv("NPS64_RDP_PREDICATED_BINNING","1",1))return false;
 #elif defined(__ORBIS__)
     if(setenv("NPS64_RDP_DIRECT_BINNING","1",1))return false;
     if(setenv("NPS64_RDP_COLOR_ONLY","1",1))return false;
@@ -118,7 +119,7 @@ bool nps64_gpu_begin(void) {
     nps64_log("[gpu] PS4 RADV progress markers enabled\n");
     nps64_log("[gpu] conservative compute: serialized setup and single-flight submissions\n");
 #ifdef NPS64_PARALLEL_GAME
-    nps64_log("[gpu] original ParaLLEl-RDP shaders; replacement binning/color=off; subgroup=0 small_types=0\n");
+    nps64_log("[gpu] predicated tile binning=on; original raster/color/textures; subgroup=0 small_types=0\n");
 #else
     nps64_log("[gpu] PS4 compute profile: ubershader=1 direct dispatch; subgroup=0 small_types=0\n");
 #endif

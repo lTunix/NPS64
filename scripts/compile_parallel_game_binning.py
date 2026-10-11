@@ -1,0 +1,22 @@
+"""Embed the PS4-validated binning variant without probe-only readback writes."""
+from pathlib import Path
+import re,struct,subprocess
+root=Path('/work');out=root/'build/parallel-game'
+out.mkdir(parents=True,exist_ok=True)
+subprocess.run(['python3','/work/scripts/prepare_tile_direct_probe.py'],check=True)
+source=(root/'build/parallel-tile-probe/tile-direct_predicated.comp').read_text()
+source,n=re.subn(r'layout\(set = 0, binding = 2, std430\) buffer InputTrace \{ uvec4 scissor_trace\[\]; \};','',source)
+assert n==1
+source,n=re.subn(r'    if \(local_index == 0u && group_index \* 32u < uint\(fb_info.primitive_count\)\)\n        scissor_trace\[group_index\] = uvec4\(scissor_state.elems\[group_index \* 32u\]\);\n','',source)
+assert n==1 and 'scissor_trace' not in source
+path=out/'tile-game-predicated.comp';path.write_text(source)
+includes=root/'vendor/parallel-n64/mupen64plus-video-paraLLEl/parallel-rdp/parallel-rdp/shaders'
+spv=out/'tile-game-predicated.spv'
+subprocess.run([str(root/'build/gpu/glslang-host/StandAlone/glslang'),'-V','--target-env','vulkan1.1',
+ '-I'+str(includes),'-DUBERSHADER=1','-DSMALL_TYPES=0','-DSUBGROUP=0','-DDEBUG_ENABLE=0',str(path),'-o',str(spv)],check=True)
+subprocess.run(['spirv-val','--target-env','vulkan1.1',str(spv)],check=True)
+words=struct.unpack('<%dI'%(spv.stat().st_size//4),spv.read_bytes())
+header='#pragma once\n#include <stdint.h>\n#ifdef __cplusplus\nnamespace RDP {\n#endif\nstatic const uint32_t nps64_tile_predicated_spirv[]={\n'
+header+='\n'.join(','.join(f'0x{w:08x}u' for w in words[i:i+8])+',' for i in range(0,len(words),8))+'\n};\n#ifdef __cplusplus\n}\n#endif\n'
+(out/'nps64_tile_predicated.hpp').write_text(header)
+print('PASS game binning SPIR-V; diagnostic readback binding removed')
