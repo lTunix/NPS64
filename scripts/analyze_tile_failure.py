@@ -1,12 +1,17 @@
-"""Summarize a case-6 repeat-10 capture without executing captured code."""
+"""Summarize a quadrant mismatch capture without executing captured code."""
 from pathlib import Path
-import argparse,json,struct
+import argparse,json,struct,re
 parser=argparse.ArgumentParser()
 parser.add_argument('capture',type=Path)
 parser.add_argument('output',type=Path)
+parser.add_argument('--case',type=int)
 args=parser.parse_args();args.output.mkdir(parents=True,exist_ok=True)
+cases={int(re.search(r'case(\d+)-',p.name)[1]) for p in args.capture.glob('tile-fail-case*-buffer0.bin')}
+if args.case is None:
+    assert len(cases)==1,'Select --case when multiple captures exist'
+    args.case=cases.pop()
 sizes=[8192,4096,1024,524288,65536]
-buffers=[(args.capture/f'tile-fail-case5-buffer{i}.bin').read_bytes() for i in range(5)]
+buffers=[(args.capture/f'tile-fail-case{args.case}-buffer{i}.bin').read_bytes() for i in range(5)]
 assert all(len(b)==1048576 for b in buffers)
 words=[struct.unpack('<262144I',b) for b in buffers]
 assert words[1][:4]==(0,0,640,480), 'Expected upper-left quadrant fixture'
@@ -21,8 +26,9 @@ for y in range(32):
         mismatches+=sum(mask[tile*8+group]!=(expected if group==0 else 0) for group in range(8))
         coarse_mismatches+=coarse[tile]!=expected
     rows.append({'y':y,'active_x':active,'unexpected_x':unexpected})
-report={'fixture':'case6 repeat10, one FILL/COPY primitive, upper-left quadrant',
+report={'fixture':f'case{args.case+1} quadrant fixture, one FILL/COPY primitive',
  'scissor':words[1][:4],'mask_mismatches_visible_region':mismatches,
+ 'shader_scissor_readback':words[2][:4] if args.case>=6 else None,
  'coarse_mismatches_visible_region':coarse_mismatches,
  'allocation_guards_intact':[all(w==0xcdcdcdcd for w in words[i][sizes[i]//4:]) for i in range(5)],
  'rows':rows}

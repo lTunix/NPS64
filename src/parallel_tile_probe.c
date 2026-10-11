@@ -31,7 +31,8 @@ const char *parallel_probe_case_name(unsigned index) {
   "Direct tiles / no shared LDS / atomics","Direct tiles / stores / one-group fixture only",
   "Direct tiles / 0..256 primitives / concurrent groups",
   "Direct tiles / same stress / GPU input uploads",
-  "Direct tiles / volatile inputs / GPU scissor readback"};
+  "Direct tiles / volatile inputs / GPU scissor readback",
+  "Direct tiles / predicated Y rejection / scissor readback"};
  return index<PARALLEL_PROBE_CASES?names[index]:"invalid";
 }
 static void report(ParallelComputeProbe *p,const char *format,...) {
@@ -135,8 +136,8 @@ int parallel_probe_open(ParallelComputeProbe **output,ParallelProbeReport callba
     report(p,"READY isolated first tile stage: 320x239, one primitive; original 32 vs candidate 64");return 0;
 }
 static int prepare_pipeline(ParallelComputeProbe *p,unsigned index){
-    const uint32_t *codes[]={tile_spv32,tile_spv64,tile_spv_direct_atomic,tile_spv_direct_store,tile_spv_direct_atomic,tile_spv_direct_atomic,tile_spv_direct_volatile};
-    const size_t bytes[]={sizeof(tile_spv32),sizeof(tile_spv64),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_store),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_volatile)};
+    const uint32_t *codes[]={tile_spv32,tile_spv64,tile_spv_direct_atomic,tile_spv_direct_store,tile_spv_direct_atomic,tile_spv_direct_atomic,tile_spv_direct_volatile,tile_spv_direct_predicated};
+    const size_t bytes[]={sizeof(tile_spv32),sizeof(tile_spv64),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_store),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_atomic),sizeof(tile_spv_direct_volatile),sizeof(tile_spv_direct_predicated)};
     unsigned i=index;
     {
         VkShaderModuleCreateInfo smci={.sType=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,.codeSize=bytes[i],.pCode=codes[i]};
@@ -211,14 +212,14 @@ int parallel_probe_run(ParallelComputeProbe *p,unsigned index,unsigned repeats) 
             stress_fixture(expected,primitives,quadrants);
             report(p,"STRESS primitives=%u groups=%u quadrant_scissors=%u",primitives,groups,quadrants);
         }
-        if(index==6){
+        if(index>=6){
             memset((char*)expected+2*SLOT_BYTES,0,sizes[2]);
             for(unsigned group=0;group<groups;group++)
                 memcpy((char*)expected+2*SLOT_BYTES+group*16,(char*)expected+SLOT_BYTES+group*32*16,16);
         }
         for(unsigned i=0;i<5;i++)memcpy(p->mapped[i],(char*)expected+i*SLOT_BYTES,SLOT_BYTES);
         memset(p->mapped[3],0,sizes[3]);memset(p->mapped[4],0,sizes[4]);
-        if(index==6)memset(p->mapped[2],0,sizes[2]);
+        if(index>=6)memset(p->mapped[2],0,sizes[2]);
         TRY(vkResetCommandBuffer(p->cmd,0));
         VkCommandBufferBeginInfo begin={.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};TRY(vkBeginCommandBuffer(p->cmd,&begin));
         VkMemoryBarrier upload={.sType=VK_STRUCTURE_TYPE_MEMORY_BARRIER,.srcAccessMask=VK_ACCESS_HOST_WRITE_BIT,.dstAccessMask=VK_ACCESS_SHADER_READ_BIT|VK_ACCESS_SHADER_WRITE_BIT};
@@ -251,7 +252,7 @@ int parallel_probe_run(ParallelComputeProbe *p,unsigned index,unsigned repeats) 
             memcpy((char*)expected+3*SLOT_BYTES,p->mapped[3],sizes[3]);memcpy((char*)expected+4*SLOT_BYTES,p->mapped[4],sizes[4]);
         }
 #endif
-        if(index==6&&groups)report(p,"GPU scissor group0=%u,%u,%u,%u expected=%u,%u,%u,%u",
+        if(index>=6&&groups)report(p,"GPU scissor group0=%u,%u,%u,%u expected=%u,%u,%u,%u",
             p->mapped[2][0],p->mapped[2][1],p->mapped[2][2],p->mapped[2][3],
             expected[2*SLOT_BYTES/4],expected[2*SLOT_BYTES/4+1],expected[2*SLOT_BYTES/4+2],expected[2*SLOT_BYTES/4+3]);
         for(unsigned i=0;i<TOTAL_BYTES/4;i++)if(p->mapped[i/(SLOT_BYTES/4)][i%(SLOT_BYTES/4)]!=expected[i]){

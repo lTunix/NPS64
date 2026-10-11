@@ -35,14 +35,25 @@ for name,coarse in [
  ('direct_atomic','if (mask != 0u) atomicOr(binned_bitmask_coarse[linear_tile], 1u << group_index); else atomicAnd(binned_bitmask_coarse[linear_tile], ~(1u << group_index));'),
  # Unique writer only because the isolated fixture dispatches ONE primitive group.
  ('direct_store','binned_bitmask_coarse[linear_tile] = mask != 0u ? 1u : 0u;'),
- ('direct_volatile','if (mask != 0u) atomicOr(binned_bitmask_coarse[linear_tile], 1u << group_index); else atomicAnd(binned_bitmask_coarse[linear_tile], ~(1u << group_index));')]:
+ ('direct_volatile','if (mask != 0u) atomicOr(binned_bitmask_coarse[linear_tile], 1u << group_index); else atomicAnd(binned_bitmask_coarse[linear_tile], ~(1u << group_index));'),
+ ('direct_predicated','if (mask != 0u) atomicOr(binned_bitmask_coarse[linear_tile], 1u << group_index); else atomicAnd(binned_bitmask_coarse[linear_tile], ~(1u << group_index));')]:
  glsl=prefix+body.replace('COARSE_WRITE',coarse)
- if name=='direct_volatile':
+ if name in ('direct_volatile','direct_predicated'):
   glsl=glsl.replace('readonly buffer TriangleSetupBuffer','volatile readonly buffer TriangleSetupBuffer').replace('readonly buffer ScissorStateBuffer','volatile readonly buffer ScissorStateBuffer')
   glsl,n=re.subn(r'layout\(set = 0, binding = 2, std430\) readonly buffer StateIndicesBuffer\s*\{.*?\}\s*state_indices;',
    'layout(set = 0, binding = 2, std430) buffer InputTrace { uvec4 scissor_trace[]; };',glsl,flags=re.S)
   assert n==1
   glsl=glsl.replace('    uint mask = 0u;', '    if (local_index == 0u && group_index * 32u < uint(fb_info.primitive_count))\n        scissor_trace[group_index] = uvec4(scissor_state.elems[group_index * 32u]);\n    uint mask = 0u;')
+ if name=='direct_predicated':
+  binning=(includes/'binning.h').read_text()
+  old='if (end_y < start_y)\n\t\treturn false;'
+  assert binning.count(old)==1
+  binning=binning.replace(old,'bool valid_y = end_y >= start_y;\n\tend_y = max(end_y, start_y);')
+  old='return x_range.x <= x_range.y;'
+  assert binning.count(old)==1
+  binning=binning.replace(old,'return valid_y && x_range.x <= x_range.y;')
+  assert glsl.count('#include "binning.h"')==1
+  glsl=glsl.replace('#include "binning.h"',binning)
  path=out/f'tile-{name}.comp';path.write_text(glsl)
  spv=out/f'tile-{name}.spv'
  subprocess.run([str(root/'build/gpu/glslang-host/StandAlone/glslang'),'-V','--target-env','vulkan1.1',
