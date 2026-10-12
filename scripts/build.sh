@@ -23,8 +23,8 @@ ld.lld -m elf_x86_64 -pie -z max-page-size=0x4000 --script scripts/ps4-link.x --
 "$sdk/bin/linux/create-fself" -in=build/nps64.elf -out=build/nps64.oelf --eboot build/stage/eboot.bin --paid 0x3800000000000011
 python3 scripts/check_elf.py
 python3 scripts/assets.py
-NPS64_VERSION=00.51 bash scripts/package.sh
+NPS64_VERSION=00.67 bash scripts/package.sh
 bash scripts/verify_pkg.sh
-cp out/IV0000-NPSX00064_00-NPS64PS400000000.pkg out/NPS64-00.51-cpu.pkg
-sha256sum out/*.pkg > out/SHA256SUMS
+cp out/IV0000-NPSX00064_00-NPS64PS400000000.pkg out/NPS64-by-lTunix-00.67.pkg
+(cd out && sha256sum NPS64-by-lTunix-00.67.pkg > NPS64-by-lTunix-00.67-SHA256.txt)
 echo 'PKG construido. La ejecucion y el rendimiento requieren pruebas en PS4 real.'

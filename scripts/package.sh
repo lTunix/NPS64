@@ -17,7 +17,7 @@ entry CATEGORY Utf8 4 gd
 entry CONTENT_ID Utf8 48 "$content"
 entry DOWNLOAD_DATA_SIZE Integer 4 0
 entry SYSTEM_VER Integer 4 0
-entry TITLE Utf8 128 'NPS64 - Experimental'
+entry TITLE Utf8 128 'NPS64 by lTunix'
 entry TITLE_ID Utf8 12 NPSX00064
 entry VERSION Utf8 8 "${NPS64_VERSION:-00.13}"
 cp -a assets/font.bin "$stage/"

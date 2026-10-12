@@ -28,6 +28,6 @@ with tarfile.open(str(output),'w:gz',compresslevel=6) as out:
  else:
   for name in ['vendor/parallel-n64','vendor/OpenOrbis/src/modules','vendor/OpenOrbis/.nps64-revision','vendor/gpu','reference/DolphinPS4']:
    out.add(root/name,arcname=name,filter=keep)
- for name in ['README.md','TODO.md','LICENSE','Dockerfile','Dockerfile.gpu','.dockerignore','.gitignore','.gitattributes','sources.lock.json','scripts','src','docs','tests','assets']:
+ for name in ['README.md','icon.png','TODO.md','LICENSE','Dockerfile','Dockerfile.gpu','.dockerignore','.gitignore','.gitattributes','sources.lock.json','scripts','src','docs','tests','assets']:
   out.add(root/name,arcname=name,filter=keep)
 print('Fuentes correspondientes: '+str(output.relative_to(root)))

@@ -42,6 +42,7 @@ gmon.out
 /saves/
 
 # Runtime diagnostics, crash dumps, local settings and conversation exports.
+/logs/
 *.log
 *.dmp
 *.core

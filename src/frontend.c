@@ -549,7 +549,7 @@ static void game_hud_draw(void) {
 static void menu_draw(void) {
     rect(0,0,SCREEN_W,SCREEN_H,0xff101e30);
     rect(0,0,SCREEN_W,5,accent[theme]);
-    platform_text(64,40,"NPS64",accent[theme],4);
+    platform_text(64,40,"NPS64 by lTunix",accent[theme],4);
     platform_text(64,115,"BIBLIOTECA     |     NINTENDO 64     |     PS4",0xffadbcd2,2);
     if(input_test) {
         platform_text(64,190,"PRUEBA DEL MANDO - acciones de biblioteca suspendidas",accent[theme],2);
@@ -614,9 +614,9 @@ int main(void) {
     nps64_log("NPS64 00.13 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
-    nps64_log("NPS64 00.51 CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
+    nps64_log("NPS64 by lTunix 00.67 CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
 #else
-    nps64_log("NPS64 00.51 CPU ONLY core 890323d Ari64 / Angrylion\n");
+    nps64_log("NPS64 by lTunix 00.67 CPU ONLY core 890323d Ari64 / Angrylion\n");
 #endif
 #endif
     FILE *cfg=fopen(DATA_ROOT "/settings.cfg","r");
