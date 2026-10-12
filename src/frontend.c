@@ -48,7 +48,9 @@ static unsigned requested_cpu=1; /* 0 cached interpreter, 1 checked Ari64 JIT */
 extern int nps64_core_jit_supported(void);
 extern unsigned nps64_core_workers(void);
 extern void nps64_core_perf_take(double *,double *);
+#ifndef NPS64_HLE_GAME
 extern void nps64_core_game_profile(unsigned) __attribute__((weak));
+#endif
 double nps64_profile_time(void) { return platform_time(); }
 static uint64_t core_frames;
 static bool first_video;
@@ -230,7 +232,7 @@ static void hle_preview_draw(unsigned frame) {
         unsigned p=((y/2)*256+x/2)*4;
         fb[(y+104)*SCREEN_W+x+384]=0xff000000u|((uint32_t)hle_pixels[p]<<16)|((uint32_t)hle_pixels[p+1]<<8)|hle_pixels[p+2];
     }
-    platform_text(32,30,"NPS64 00.38 - Geometria real en Vulkan",0xffffffff,2);
+    platform_text(32,30,"NPS64 00.65 - Geometria real en Vulkan",0xffffffff,2);
     char text[120];
     if(nps64_hle_sequence_active)snprintf(text,sizeof(text),"Secuencia Vulkan: frame %u/64. Circulo: terminar.",frame+1);
     else snprintf(text,sizeof(text),"Ultimo frame Vulkan. Circulo: volver a la pausa.");
@@ -483,6 +485,7 @@ static bool start_game(void) {
     if(!rom_content_key(&current)) {notify("No se pudo leer la ROM completa");return false;}
     nps64_log("[load] hash_ok key=%s seconds=%.3f\n",current.key,platform_time()-started);
     use_gpu=requested_gpu && nps64_gpu_begin();
+ #ifndef NPS64_HLE_GAME
     if(nps64_core_game_profile) {
         uint8_t header[64];unsigned profile=0;
         FILE *rom=fopen(current.path,"rb");
@@ -490,6 +493,7 @@ static bool start_game(void) {
         nps64_core_game_profile(profile);
         nps64_log("[cpu-profile] %s\n",profile?"zelda-pal-gc reciprocal lanes":"standard lanes");
     }
+ #endif
     struct retro_game_info info={current.path,NULL,0,NULL};
     for(;;) {
         use_jit=requested_cpu && nps64_core_jit_supported();
@@ -605,7 +609,7 @@ int main(void) {
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
     nps64_log_init(DATA_ROOT "/nps64.log");
 #if defined(NPS64_HLE_GAME)
-    nps64_log("NPS64 00.38 Ari64 / Angrylion + Vulkan game geometry sequence\n");
+    nps64_log("NPS64 00.65 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
     nps64_log("NPS64 00.19 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
