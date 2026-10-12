@@ -232,7 +232,7 @@ static void hle_preview_draw(unsigned frame) {
         unsigned p=((y/2)*256+x/2)*4;
         fb[(y+104)*SCREEN_W+x+384]=0xff000000u|((uint32_t)hle_pixels[p]<<16)|((uint32_t)hle_pixels[p+1]<<8)|hle_pixels[p+2];
     }
-    platform_text(32,30,"NPS64 00.65 - Geometria real en Vulkan",0xffffffff,2);
+    platform_text(32,30,"NPS64 00.66 - Geometria real en Vulkan",0xffffffff,2);
     char text[120];
     if(nps64_hle_sequence_active)snprintf(text,sizeof(text),"Secuencia Vulkan: frame %u/64. Circulo: terminar.",frame+1);
     else snprintf(text,sizeof(text),"Ultimo frame Vulkan. Circulo: volver a la pausa.");
@@ -609,7 +609,7 @@ int main(void) {
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
     nps64_log_init(DATA_ROOT "/nps64.log");
 #if defined(NPS64_HLE_GAME)
-    nps64_log("NPS64 00.65 Ari64 / Angrylion + Vulkan game geometry sequence\n");
+    nps64_log("NPS64 00.66 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
     nps64_log("NPS64 00.19 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)

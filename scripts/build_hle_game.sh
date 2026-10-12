@@ -28,15 +28,15 @@ ld.lld-21 -m elf_x86_64 -pie -z max-page-size=0x4000 --script scripts/ps4-gpu-li
 python3 scripts/check_elf.py
 python3 scripts/check_gpu_boot.py
 python3 scripts/assets.py
-NPS64_VERSION=00.65 bash scripts/package.sh
+NPS64_VERSION=00.66 bash scripts/package.sh
 bash scripts/verify_pkg.sh
-cp out/IV0000-NPSX00064_00-NPS64PS400000000.pkg out/NPS64-00.65-hle-vulkan-fallback.pkg
-sha256sum out/NPS64-00.65-hle-vulkan-fallback.pkg > out/NPS64-00.65-hle-vulkan-fallback-SHA256.txt
+cp out/IV0000-NPSX00064_00-NPS64PS400000000.pkg out/NPS64-00.66-hle-vulkan-fallback.pkg
+sha256sum out/NPS64-00.66-hle-vulkan-fallback.pkg > out/NPS64-00.66-hle-vulkan-fallback-SHA256.txt
 python3 - <<'PY'
 import hashlib
 from pathlib import Path
 elf=Path('build/nps64.elf').read_bytes()
-assert b'NPS64 00.65 Ari64 / Angrylion + Vulkan game geometry sequence' in elf
+assert b'NPS64 00.66 Ari64 / Angrylion + Vulkan game geometry sequence' in elf
 assert b'%s Vulkan sequence frames=' in elf
 assert b'scene_frames=%u uniform_frames=%u' in elf
 print('PASS HLE Vulkan fallback payload')

@@ -23,8 +23,8 @@ script = '\n'.join([
     'sdk=/work/toolchain/OpenOrbis/PS4Toolchain', 'sysroot=/work/build/gpu/sysroot',
     'dir=build/hle-game', 'mesa=build/gpu/mesa-build', libraries, link, fself,
     'python3 scripts/check_elf.py', 'python3 scripts/check_gpu_boot.py',
-    'NPS64_VERSION=00.65 bash scripts/package.sh', 'bash scripts/verify_pkg.sh',
-    'cp out/IV0000-NPSX00064_00-NPS64PS400000000.pkg out/NPS64-00.65-hle-shadps4.pkg',
-    'sha256sum out/NPS64-00.65-hle-shadps4.pkg > out/NPS64-00.65-hle-shadps4-SHA256.txt',
+    'NPS64_VERSION=00.66 bash scripts/package.sh', 'bash scripts/verify_pkg.sh',
+    'cp out/IV0000-NPSX00064_00-NPS64PS400000000.pkg out/NPS64-00.66-hle-shadps4.pkg',
+    'sha256sum out/NPS64-00.66-hle-shadps4.pkg > out/NPS64-00.66-hle-shadps4-SHA256.txt',
 ])
 subprocess.run(['bash', '-c', script], check=True)

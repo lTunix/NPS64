@@ -335,6 +335,10 @@ static int renderer_draw(HleRenderer *r,const HleVertex *draw_vertices,size_t dr
         ProbeDraw foreground={.color={1,game_scene||frame>=64?1:0,game_scene||frame>=64?1:0,1},.depth=game_scene?0:-0.3f,.textured=!game_scene&&frame>=64},background={.color={0,0,1,1},.depth=0.3f};
         vkCmdPushConstants(r->cmd,r->layout,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(foreground),&foreground);
         if(game_scene) {
+            VkPipeline bound_pipeline=r->pipeline;
+            ProbeDraw bound_draw=foreground;
+            VkRect2D bound_clip={{0,0},{0,0}};
+            int have_clip=0;
             /* Batch consecutive triangles with the same depth state, preserving order. */
             for(size_t first=0;first<draw_count;) {
                 size_t end=first+3;unsigned enabled=game_depth[first/3]!=0;
@@ -361,8 +365,15 @@ static int renderer_draw(HleRenderer *r,const HleVertex *draw_vertices,size_t dr
                     }
                     if(m->mux[2]&HLE_MATERIAL_VALID)state=((m->mux[2]&HLE_Z_COMPARE)?1:0)|((m->mux[2]&HLE_Z_WRITE)?2:0)|((m->mux[2]&(HLE_BLEND|HLE_ALPHA_COVERAGE))?4:0);
                 }
-                vkCmdPushConstants(r->cmd,r->layout,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(foreground),&foreground);
-                vkCmdBindPipeline(r->cmd,VK_PIPELINE_BIND_POINT_GRAPHICS,r->scene_pipelines[foreground.padding][state]);
+                if(memcmp(&bound_draw,&foreground,sizeof(foreground))){
+                    vkCmdPushConstants(r->cmd,r->layout,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(foreground),&foreground);
+                    bound_draw=foreground;
+                }
+                VkPipeline pipeline=r->scene_pipelines[foreground.padding][state];
+                if(bound_pipeline!=pipeline){
+                    vkCmdBindPipeline(r->cmd,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline);
+                    bound_pipeline=pipeline;
+                }
                 VkRect2D clip={{0,0},{256,256}};
                 if(materials&&(materials[first/3].mux[2]&HLE_SCISSOR)){
                     const float *s=materials[first/3].scissor;int bounds[4];
@@ -371,7 +382,9 @@ static int renderer_draw(HleRenderer *r,const HleVertex *draw_vertices,size_t dr
                     clip.extent.width=bounds[2]>bounds[0]?(unsigned)(bounds[2]-bounds[0]):0;
                     clip.extent.height=bounds[3]>bounds[1]?(unsigned)(bounds[3]-bounds[1]):0;
                 }
-                vkCmdSetScissor(r->cmd,0,1,&clip);
+                if(!have_clip||memcmp(&bound_clip,&clip,sizeof(clip))){
+                    vkCmdSetScissor(r->cmd,0,1,&clip);bound_clip=clip;have_clip=1;
+                }
                 vkCmdDraw(r->cmd,(uint32_t)(end-first),1,(uint32_t)first,0);first=end;
             }
         }else vkCmdDraw(r->cmd,(uint32_t)draw_count,1,0,0);
