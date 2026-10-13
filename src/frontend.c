@@ -12,9 +12,9 @@
 #endif
 #ifdef NPS64_UPDATES
 #include "updater.h"
-#define PAUSE_CHOICES 7
+#define PAUSE_CHOICES 8
 #else
-#define PAUSE_CHOICES 6
+#define PAUSE_CHOICES 7
 #endif
 #ifdef NPS64_HLE_GAME
 #include "hle_game_geometry.h"
@@ -45,6 +45,7 @@ static Input pads[4];
 static bool running,paused,quit_requested,options_dirty,core_shutdown;
 static unsigned slot,pause_selected,theme;
 static bool widescreen;
+static unsigned controller_pak; /* 0 Rumble Pak, 1 Memory Pak, 2 none. */
 static bool input_test;
 #ifdef NPS64_CPU_RDP_PGO
 static unsigned diagnostic_workers=6;
@@ -95,11 +96,20 @@ static const char *override(const char *key) {
     if(!strcmp(key,"parallel-n64-angrylion-vioverlay")) return filtered_vi?"Filtered":"Unfiltered";
     if(!strcmp(key,"parallel-n64-parallel-rdp-vi-aa") || !strcmp(key,"parallel-n64-parallel-rdp-vi-bilinear")) return filtered_vi?"enabled":"disabled";
     if(!strcmp(key,"parallel-n64-upscaling")) return "1x";
+    if(!strncmp(key,"parallel-n64-pak",16) && key[16]>='1' && key[16]<='4' && !key[17])
+        return controller_pak==0?"rumble":controller_pak==1?"memory":"none";
     return NULL;
+}
+static bool rumble_state(unsigned port,enum retro_rumble_effect effect,uint16_t strength) {
+    return platform_rumble(port,(unsigned)effect,strength);
 }
 static bool environment(unsigned cmd,void *data) {
     if(nps64_gpu_environment(cmd,data)) return true;
     switch(cmd) {
+    case RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE:
+        if(!data) return false;
+        ((struct retro_rumble_interface*)data)->set_rumble_state=rumble_state;
+        return true;
     case RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION: *(unsigned*)data=0; return true;
     case RETRO_ENVIRONMENT_SET_VARIABLES: {
         const struct retro_variable *v=data; option_count=0;
@@ -480,7 +490,7 @@ static void state_action(bool load) {
     notify(ok ? (load?"Estado cargado":"Estado guardado") : (load?"Estado vacio, incompatible o corrupto":"No se pudo guardar estado"));
 }
 static void config_save(void) {
-    char text[64]; int n=snprintf(text,sizeof(text),"NPS64CFG2 %u %u %u %u\n",theme,widescreen,slot,filtered_vi);
+    char text[64]; int n=snprintf(text,sizeof(text),"NPS64CFG3 %u %u %u %u %u\n",theme,widescreen,slot,filtered_vi,controller_pak);
     if(!file_write_atomic(DATA_ROOT "/settings.cfg",text,(size_t)n)) notify("No se pudo guardar configuracion");
 }
 static bool start_game(void) {
@@ -536,6 +546,7 @@ static void stop_game(void) {
     nps64_log("[hle-live] session ended GPU_frames=%llu CPU_fallback=%llu; context reused\n",hle_gpu_frames,hle_cpu_fallbacks);
     hle_gpu_frames=hle_cpu_fallbacks=hle_repeated_frames=hle_incomplete_frames=0;
 #endif
+    platform_rumble_clear();
     save_ram(); retro_unload_game(); nps64_gpu_destroy_context(); retro_deinit(); nps64_gpu_close();use_gpu=false; running=false; paused=false; platform_audio_clear();
 }
 static void rect(int x,int y,int w,int h,uint32_t color) {
@@ -617,6 +628,7 @@ static void pause_draw(void) {
 #ifdef NPS64_UPDATES
         ,"Buscar actualizaciones"
 #endif
+        ,controller_pak==0?"Accesorio: Rumble Pak":controller_pak==1?"Accesorio: Memory Pak":"Accesorio: ninguno"
     };
 #ifdef NPS64_HD_UI
     char updates[160]="";
@@ -663,11 +675,12 @@ int main(void) {
 #endif
     FILE *cfg=fopen(DATA_ROOT "/settings.cfg","r");
     if(cfg) {
-        char format[20];unsigned t,w,s,f=filtered_vi;
-        int count=fscanf(cfg,"%19s %u %u %u %u",format,&t,&w,&s,&f);
+        char format[20];unsigned t,w,s,f=filtered_vi,pak=0;
+        int count=fscanf(cfg,"%19s %u %u %u %u %u",format,&t,&w,&s,&f,&pak);
         if(count>=4 && t<3 && w<2 && s<8 && f<2 &&
-           (!strcmp(format,"NPS64CFG1") || !strcmp(format,"NPS64CFG2"))) {
-            theme=t;widescreen=w;slot=s;if(count==5 && !strcmp(format,"NPS64CFG2"))filtered_vi=f!=0;
+           (!strcmp(format,"NPS64CFG1") || !strcmp(format,"NPS64CFG2") || !strcmp(format,"NPS64CFG3"))) {
+            theme=t;widescreen=w;slot=s;if(count>=5 && strcmp(format,"NPS64CFG1"))filtered_vi=f!=0;
+            if(count==6 && !strcmp(format,"NPS64CFG3") && pak<3)controller_pak=pak;
         }
         fclose(cfg);
     }
@@ -820,7 +833,7 @@ int main(void) {
             }
 #endif
             for(unsigned i=0;i<4;i++) if(connected[i]!=pads[i].connected) { connected[i]=pads[i].connected; retro_set_controller_port_device(i,connected[i]?RETRO_DEVICE_JOYPAD:RETRO_DEVICE_NONE); }
-            if(pressed&BTN_PAUSE) { paused=!paused; pause_selected=0; platform_audio_clear(); }
+            if(pressed&BTN_PAUSE) { paused=!paused; pause_selected=0; platform_audio_clear(); if(paused) platform_rumble_clear(); }
             if(paused) {
                 if(pressed&BTN_UP) pause_selected=(pause_selected+PAUSE_CHOICES-1)%PAUSE_CHOICES;
                 if(pressed&BTN_DOWN) pause_selected=(pause_selected+1)%PAUSE_CHOICES;
@@ -828,7 +841,8 @@ int main(void) {
                 if(pressed&BTN_RIGHT) {slot=(slot+1)%8;config_save();}
                 if(pressed&BTN_BACK) paused=false;
                 if(pressed&BTN_CONFIRM) {
-                    if(pause_selected==0) paused=false;
+                    if(pause_selected==PAUSE_CHOICES-1) {controller_pak=(controller_pak+1)%3;options_dirty=true;platform_rumble_clear();config_save();notify("Accesorio cambiado para los cuatro mandos");}
+                    else if(pause_selected==0) paused=false;
                     else if(pause_selected==1) state_action(false);
                     else if(pause_selected==2) state_action(true);
                     else if(pause_selected==3) { widescreen=!widescreen;config_save(); }

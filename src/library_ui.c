@@ -42,7 +42,7 @@ void library_ui_shutdown(void){covers_shutdown();free(font);font=NULL;}
 void library_ui_pause(const char *const *labels,unsigned count,unsigned selected,unsigned slot,uint32_t accent,const char *message,const char *updates) {
     box(282,80,716,568,0xff050a12);box(290,86,700,552,0xff111d2d);box(290,86,700,3,accent);
     text(326,103,"Pausa",2,0xfff3f6fb,620);
-    for(unsigned i=0;i<count;i++){int y=168+(int)i*50;if(i==selected){box(318,y,644,44,0xff20354b);box(318,y,3,44,accent);}text(336,y+6,labels[i],1,i==selected?0xffffffff:0xffcbd7e7,610);}
+    for(unsigned i=0;i<count;i++){int y=158+(int)i*(count>7?46:50);if(i==selected){box(318,y,644,count>7?40:44,0xff20354b);box(318,y,3,count>7?40:44,accent);}text(336,y+6,labels[i],1,i==selected?0xffffffff:0xffcbd7e7,610);}
     char line[128];snprintf(line,sizeof(line),"Ranura %u / 7     Izquierda / Derecha para cambiar",slot);text(326,533,line,0,0xff94a5bf,630);
     text(326,574,message,0,0xff94a5bf,630);if(updates&&*updates)text(326,601,updates,0,accent,630);
 }

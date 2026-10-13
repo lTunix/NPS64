@@ -83,3 +83,6 @@ void platform_text(int x,int y,const char *s,uint32_t c,int scale) {
         }
     }
 }
+
+bool platform_rumble(unsigned port,unsigned effect,uint16_t strength) {(void)port;(void)effect;(void)strength;return false;}
+void platform_rumble_clear(void) {}

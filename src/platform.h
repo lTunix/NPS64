@@ -12,6 +12,8 @@ typedef struct { uint32_t buttons,raw_buttons; int16_t lx,ly,rx,ry; uint16_t joy
 bool platform_init(void);
 void platform_shutdown(void);
 void platform_poll(Input pads[4]);
+bool platform_rumble(unsigned port,unsigned effect,uint16_t strength);
+void platform_rumble_clear(void);
 uint32_t *platform_framebuffer(void);
 bool platform_present(void);
 void platform_audio(const int16_t *samples, size_t frames, double sample_rate);

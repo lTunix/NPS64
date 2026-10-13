@@ -44,6 +44,23 @@ static size_t memory_size;
 static OrbisKernelEqueue flip_queue;
 static bool queue_created, memory_allocated, buffers_registered;
 static int handles[4]={-1,-1,-1,-1}, users[4]={-1,-1,-1,-1};
+static uint16_t rumble_strength[4][2];
+static bool rumble_connected[4];
+static OrbisPadVibeParam rumble_sent[4];
+/* Core callbacks can run on the emulation thread; only the polling thread
+ * touches ScePad handles. Libretro strong=0 / weak=1. */
+bool platform_rumble(unsigned port,unsigned effect,uint16_t strength) {
+    if(port>=4 || effect>=2 || !__atomic_load_n(&rumble_connected[port],__ATOMIC_ACQUIRE)) return false;
+    __atomic_store_n(&rumble_strength[port][effect],strength,__ATOMIC_RELEASE);
+    return true;
+}
+static void rumble_stop(unsigned port) {
+    for(unsigned e=0;e<2;e++) __atomic_store_n(&rumble_strength[port][e],0,__ATOMIC_RELEASE);
+    OrbisPadVibeParam off={0};
+    if(handles[port]>=0) scePadSetVibration(handles[port],&off);
+    rumble_sent[port]=off;
+}
+void platform_rumble_clear(void) {for(unsigned i=0;i<4;i++) rumble_stop(i);}
 static unsigned char font[128*8*16];
 static Nps64AudioQueue audio_queue;
 static int audio_stop,audio_failed,audio_priority_result,audio_output_error;
@@ -257,12 +274,20 @@ void platform_poll(Input pads[4]) {
     for(int i=0;i<4;i++) {
         memset(&pads[i],0,sizeof(pads[i]));
         int uid=ordered[i];
-        if(uid!=users[i]) { if(handles[i]>=0) scePadClose(handles[i]); handles[i]=-1; users[i]=uid; }
+        if(uid!=users[i]) { __atomic_store_n(&rumble_connected[i],false,__ATOMIC_RELEASE);rumble_stop(i);if(handles[i]>=0) scePadClose(handles[i]); handles[i]=-1; users[i]=uid; }
         if(uid<0) continue;
         if(handles[i]<0) handles[i]=scePadOpen(uid,0,0,NULL);
         if(handles[i]<0) continue;
         OrbisPadData p; memset(&p,0,sizeof(p));
-        if(scePadReadState(handles[i],&p)<0 || !p.connected) continue;
+        if(scePadReadState(handles[i],&p)<0 || !p.connected) {
+            if(__atomic_exchange_n(&rumble_connected[i],false,__ATOMIC_ACQ_REL)) rumble_stop(i);
+            continue;
+        }
+        __atomic_store_n(&rumble_connected[i],true,__ATOMIC_RELEASE);
+        OrbisPadVibeParam vibe={
+            (uint8_t)((__atomic_load_n(&rumble_strength[i][0],__ATOMIC_ACQUIRE)+128u)/257u),
+            (uint8_t)((__atomic_load_n(&rumble_strength[i][1],__ATOMIC_ACQUIRE)+128u)/257u)};
+        if(memcmp(&vibe,&rumble_sent[i],sizeof(vibe)) && scePadSetVibration(handles[i],&vibe)>=0) rumble_sent[i]=vibe;
         pads[i]=input_ps4_decode(&p);
     }
 }
@@ -329,6 +354,7 @@ void platform_text(int x,int y,const char *text,uint32_t color,int scale) {
     }
 }
 void platform_shutdown(void) {
+    platform_rumble_clear();
     free(canvas);canvas=NULL;
     for(int i=0;i<4;i++) if(handles[i]>=0) scePadClose(handles[i]);
     if(audio_thread_started) {

@@ -76,7 +76,11 @@ int32_t sceUserServiceGetLoginUserIdList(OrbisUserServiceLoginUserIdList *l) {fo
 int32_t scePadInit(void) {assert(modules_loaded & 16);return 0;}
 int32_t scePadOpen(int32_t u,int32_t t,int32_t i,void *p) {return 1;}
 int32_t scePadClose(int32_t h) {return 0;}
-int32_t scePadReadState(int32_t h,OrbisPadData *p) {memset(p,0,sizeof(*p));p->connected=1;p->buttons=0x4000;p->leftStick.x=p->leftStick.y=p->rightStick.x=p->rightStick.y=128;return 0;}
+static bool test_pad_connected=true;
+static unsigned vibration_calls;
+static OrbisPadVibeParam vibration;
+int32_t scePadSetVibration(int32_t h,const OrbisPadVibeParam *p) {assert(h==1);vibration=*p;vibration_calls++;return 0;}
+int32_t scePadReadState(int32_t h,OrbisPadData *p) {memset(p,0,sizeof(*p));p->connected=test_pad_connected;p->buttons=0x4000;p->leftStick.x=p->leftStick.y=p->rightStick.x=p->rightStick.y=128;return 0;}
 int32_t sceVideoOutOpen(OrbisUserServiceUserId u,int32_t b,int32_t i,const void *p) {assert(modules_loaded & 4);return 1;}
 int32_t sceVideoOutClose(int32_t v) {return 0;}
 int32_t sceVideoOutAddFlipEvent(OrbisKernelEqueue q,int32_t v,void *p) {return 0;}
@@ -232,6 +236,19 @@ int main(void) {
     for(int i=0;i<1000;i++) assert(platform_time()>0);
     assert(getenv("TEST_TSC") ? process_clock_reads==reads : process_clock_reads==reads+1000);
     Input p[4];platform_poll(p);assert(p[0].buttons==BTN_CONFIRM && p[0].raw_buttons==0x4000);
+    assert(!platform_rumble(4,0,65535) && !platform_rumble(0,2,65535));
+    assert(platform_rumble(0,0,65535));platform_poll(p);
+    assert(vibration.lgMotor==255 && vibration.smMotor==0);
+    assert(platform_rumble(0,1,32768));platform_poll(p);
+    assert(vibration.lgMotor==255 && vibration.smMotor==128);
+    unsigned rumble_calls=vibration_calls;platform_poll(p);assert(vibration_calls==rumble_calls);
+    assert(platform_rumble(0,0,0));platform_poll(p);assert(!vibration.lgMotor && vibration.smMotor==128);
+    platform_rumble_clear();assert(!vibration.lgMotor && !vibration.smMotor);
+    assert(platform_rumble(0,0,65535));platform_poll(p);
+    test_pad_connected=false;platform_poll(p);assert(!vibration.lgMotor && !vibration.smMotor);
+    assert(!platform_rumble(0,0,65535));
+    test_pad_connected=true;platform_poll(p);assert(!vibration.lgMotor && !vibration.smMotor);
+    puts("PASS: Rumble Pak motor mapping, strength, deduplication, stop and reconnect");
     nps64_log("dedicated log %d\n",123);assert(nps64_log_ok());
     if(getenv("TEST_AUDIO")) {
         int16_t sound[4000*2];for(unsigned i=0;i<4000;i++){sound[i*2]=1000;sound[i*2+1]=-2000;}

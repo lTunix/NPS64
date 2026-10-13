@@ -1,3 +1,12 @@
+## Release público 00.68
+
+- [x] Biblioteca y pausa HD, carátulas descargables y caché sin conexión.
+- [x] Comprobación automática/manual de actualizaciones y PKG verificado en /data/pkg.
+- [x] Rumble Pak para cuatro mandos, selección persistente del accesorio y parada segura.
+- [x] Rumble confirmado por el usuario en PS4 física.
+- [x] Pruebas del backend y frontend; PKG comprobado y arranque en shadPS4.
+- [x] README con enlace permanente a la última versión y checklist público.
+
 ## Prioridad activa: CPU 00.51, temporizacion y rasterizado
 
 - [x] Analizar por separado las sesiones CPU50 de GoldenEye, Tennis y Mario.
