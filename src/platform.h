@@ -7,7 +7,7 @@
 #define SCREEN_H 720
 enum { BTN_UP=1, BTN_DOWN=2, BTN_LEFT=4, BTN_RIGHT=8, BTN_CONFIRM=16,
        BTN_BACK=32, BTN_SCAN=64, BTN_PAUSE=128, BTN_PREV=256, BTN_NEXT=512,
-       BTN_HELP=1024, BTN_EXIT=2048 };
+       BTN_HELP=1024, BTN_EXIT=2048, BTN_UPDATE=4096 };
 typedef struct { uint32_t buttons,raw_buttons; int16_t lx,ly,rx,ry; uint16_t joy; bool connected; } Input;
 bool platform_init(void);
 void platform_shutdown(void);

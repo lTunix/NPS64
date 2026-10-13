@@ -22,7 +22,15 @@ Encuentra el archivo **PKG** en [Releases](https://github.com/lTunix/NPS64/relea
 
 Se admiten archivos `.n64`, `.z64` y `.v64`. La aplicación no incluye juegos: utiliza tus propias copias.
 
+La biblioteca descarga carátulas desde Libretro y las guarda en `/data/NPS64/covers` para usarlas sin conexión. Si una portada no aparece, puedes copiar allí un PNG de hasta 1024 × 1024 píxeles con el mismo nombre del juego, cambiando únicamente su extensión por `.png`.
+
 Durante una partida, pulsa **L3 + R3** para abrir el menú de pausa. Desde allí puedes guardar o cargar una partida y volver a la biblioteca.
+
+## Actualizaciones
+
+Al abrir la aplicación, NPS64 busca nuevas versiones en GitHub y las descarga automáticamente en `/data/pkg`. También puedes pulsar **L2** en la biblioteca o elegir **Buscar actualizaciones** en el menú de pausa.
+
+El menú muestra el progreso de la descarga. Cuando termine, instala el nuevo PKG desde el instalador de tu PS4.
 
 ## Mira cómo funciona
 

@@ -40,3 +40,7 @@ ni en el archivo de fuentes. El driver GNM se obtiene de la propia PS4 al arranc
 
 00.08 usa dlmalloc 2.8.6 de Doug Lea (MIT-0), conservando su texto de licencia,
 con la configuración mspace de DolphinPS4; las fuentes se incluyen en src/third_party.
+
+Carátulas: [Libretro Thumbnails](https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_64). Las imágenes se descargan al usar la biblioteca y pertenecen a sus respectivos titulares.
+
+Decodificador PNG: [stb_image, Sean Barrett y colaboradores](https://github.com/nothings/stb), licencia MIT / dominio público incluida en el archivo fuente.

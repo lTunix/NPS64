@@ -2,6 +2,8 @@
 set -euo pipefail
 cd /work
 mkdir -p build
+bash scripts/test_updater.sh
+bash scripts/test_covers.sh
 bash scripts/test_frame_pacing.sh
 bash scripts/test_rom_compat.sh
 clang -std=c11 -O1 -g -fsanitize=address,undefined -Wall -Wextra -Werror -Isrc tests/test_cpu_game_profile.c -o build/test-cpu-game-profile

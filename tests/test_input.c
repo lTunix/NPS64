@@ -12,7 +12,7 @@ int main(void) {
         {0x1000,BTN_HELP,0},        /* Triangle */
         {0x0008,BTN_EXIT,1u<<3},    /* Options / N64 Start */
         {0x0002,0,0}, {0x0004,0,0}, {0x0006,BTN_PAUSE,0},
-        {0x0100,0,1u<<12}, {0x0400,BTN_PREV,1u<<10},
+        {0x0100,BTN_UPDATE,1u<<12}, {0x0400,BTN_PREV,1u<<10},
         {0x0800,BTN_NEXT,1u<<11}, {0x0010,BTN_UP,1u<<4},
         {0x0040,BTN_DOWN,1u<<5}, {0x0080,BTN_LEFT,1u<<6},
         {0x0020,BTN_RIGHT,1u<<7},
@@ -24,6 +24,7 @@ int main(void) {
     }
     p.buttons=0; p.leftStick.x=0; p.rightStick.y=255; p.analogButtons.l2=101;
     Input in=input_ps4_decode(&p);
+    assert(in.buttons==BTN_UPDATE);
     assert(in.lx==-32768 && in.ry==32766 && in.joy==(1u<<12));
     p.connected=0; in=input_ps4_decode(&p);
     assert(!in.connected && !in.buttons && !in.joy && !in.raw_buttons);

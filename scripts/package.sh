@@ -32,6 +32,6 @@ cp "$sdk/samples/piglet/sce_sys/about/right.sprx" "$stage/sce_sys/about/"
 python3 /work/scripts/check_stage.py "$stage"
 cd "$stage"
 rm -f pkg.gp4
-"$tools/create-gp4" -out pkg.gp4 --content-id="$content" --files 'eboot.bin font.bin LICENSE.txt CREDITS.txt FONT-LICENSE.txt sce_sys/param.sfo sce_sys/icon0.png sce_module/libc.prx sce_module/libSceFios2.prx sce_sys/about/right.sprx'
+"$tools/create-gp4" -out pkg.gp4 --content-id="$content" --files 'eboot.bin font.bin ui-font.bin cover-catalog.txt LICENSE.txt CREDITS.txt FONT-LICENSE.txt sce_sys/param.sfo sce_sys/icon0.png sce_module/libc.prx sce_module/libSceFios2.prx sce_sys/about/right.sprx'
 "$tools/PkgTool.Core" pkg_build pkg.gp4 /work/out
 rm -f pkg.gp4

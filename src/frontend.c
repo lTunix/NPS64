@@ -5,6 +5,17 @@
 #include "gpu.h"
 #include "cpu_game_profile.h"
 #include "frame_pacing.h"
+#include "version.h"
+#ifdef NPS64_HD_UI
+#include "library_ui.h"
+#include "covers.h"
+#endif
+#ifdef NPS64_UPDATES
+#include "updater.h"
+#define PAUSE_CHOICES 7
+#else
+#define PAUSE_CHOICES 6
+#endif
 #ifdef NPS64_HLE_GAME
 #include "hle_game_geometry.h"
 #include "hle_game_material.h"
@@ -566,6 +577,14 @@ static void menu_draw(void) {
         platform_text(64,505,values,0xffadbcd2,2);
         return;
     }
+#ifdef NPS64_HD_UI
+    char updates[160]="";
+#ifdef NPS64_UPDATES
+    nps64_updater_status(updates,sizeof(updates),NULL);
+#endif
+    library_ui_draw(games,game_count,selected,accent[theme],message,updates);
+    return;
+#endif
     if(!game_count) {
         platform_text(64,235,"No hay ROMs validas. Formatos: .z64 .v64 .n64",0xffeeeeee,2);
         platform_text(64,280,"Copia tus juegos en /data/NPS64/games",accent[theme],2);
@@ -577,24 +596,47 @@ static void menu_draw(void) {
         char label[74]; snprintf(label,sizeof(label),"%s%.67s",i==selected?"> ":"  ",games[i].name);
         platform_text(64,y,label,i==selected?accent[theme]:0xffdee4ed,2);
     }
+#ifdef NPS64_UPDATES
+    platform_text(64,600,"X: jugar | Cuadrado: ROMs | L1/R1: pagina | L2: actualizaciones",0xffadbcd2,2);
+#else
     platform_text(64,600,"X: jugar | Cuadrado: buscar ROMs | L1/R1: pagina",0xffadbcd2,2);
+#endif
     platform_text(64,633,"Triangulo: probar mando | Options: salir | Izq/Der: tema",0xffadbcd2,2);
-    char perf[160];
-    snprintf(perf,sizeof(perf),"UI %.1f FPS | mando %.1f ms | dibujo %.1f ms | flip %.1f ms | log %s",ui_fps,perf_poll_ms,perf_draw_ms,perf_flip_ms,nps64_log_ok()?"OK":"ERROR");
-    platform_text(64,565,perf,0xffadbcd2,1);
+#ifdef NPS64_UPDATES
+    char update[144];nps64_updater_status(update,sizeof(update),NULL);
+    platform_text(64,565,update,accent[theme],1);
+#endif
     platform_text(64,677,message,accent[theme],1);
 }
 static void pause_draw(void) {
+#ifndef NPS64_HD_UI
     rect(275,95,730,510,0xff101e30); rect(275,95,730,5,accent[theme]);
     platform_text(320,128,"PAUSA",accent[theme],3);
-    const char *labels[]={"Continuar","Guardar estado","Cargar estado","Aspecto 4:3 / 16:9","Volver a biblioteca",filtered_vi?"Imagen: precisa (X: rapida)":"Imagen: rapida (X: precisa)"};
-    for(unsigned i=0;i<6;i++) {
-        if(pause_selected==i) rect(310,207+(int)i*48,650,45,0xff263b51);
-        platform_text(325,215+(int)i*48,labels[i],pause_selected==i?accent[theme]:0xffeeeeee,2);
+#endif
+    const char *labels[]={"Continuar","Guardar estado","Cargar estado","Aspecto 4:3 / 16:9","Volver a biblioteca",filtered_vi?"Imagen: precisa (X: rapida)":"Imagen: rapida (X: precisa)"
+#ifdef NPS64_UPDATES
+        ,"Buscar actualizaciones"
+#endif
+    };
+#ifdef NPS64_HD_UI
+    char updates[160]="";
+#ifdef NPS64_UPDATES
+    nps64_updater_status(updates,sizeof(updates),NULL);
+#endif
+    library_ui_pause(labels,PAUSE_CHOICES,pause_selected,slot,accent[theme],message,updates);
+    return;
+#endif
+    for(unsigned i=0;i<PAUSE_CHOICES;i++) {
+        if(pause_selected==i) rect(310,207+(int)i*42,650,39,0xff263b51);
+        platform_text(325,215+(int)i*42,labels[i],pause_selected==i?accent[theme]:0xffeeeeee,2);
     }
     char text[100]; snprintf(text,sizeof(text),"Ranura: %u / 7  |  Izq/Der: cambiar",slot);
     platform_text(320,525,text,0xffadbcd2,2);
     platform_text(320,562,message,accent[theme],1);
+#ifdef NPS64_UPDATES
+    char update[81];nps64_updater_status(update,sizeof(update),NULL);
+    platform_text(320,583,update,accent[theme],1);
+#endif
 }
 int main(void) {
 #if defined(__ORBIS__) && defined(NPS64_GPU)
@@ -614,9 +656,9 @@ int main(void) {
     nps64_log("NPS64 00.13 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
-    nps64_log("NPS64 by lTunix 00.67 CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
+    nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
 #else
-    nps64_log("NPS64 by lTunix 00.67 CPU ONLY core 890323d Ari64 / Angrylion\n");
+    nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion\n");
 #endif
 #endif
     FILE *cfg=fopen(DATA_ROOT "/settings.cfg","r");
@@ -688,6 +730,12 @@ int main(void) {
     game_count=library_scan(games_dir,games,512);
     snprintf(message,sizeof(message),"%zu ROMs encontradas. X: abrir | Cuadrado: actualizar",game_count);
     nps64_log("[library] startup count=%zu\n",game_count);
+#ifdef NPS64_UPDATES
+    nps64_updater_init();
+#endif
+#ifdef NPS64_HD_UI
+    library_ui_init();
+#endif
     uint32_t previous=0; bool connected[4]={false}; double repeat_at=0,deadline=platform_time();
     double perf_since=platform_time(),poll_sum=0,core_sum=0,draw_sum=0,flip_sum=0,gpu_sum=0;
     double rdp_sum=0,vi_sum=0,pace_sum=0,pace_overshoot_sum=0;
@@ -710,9 +758,15 @@ int main(void) {
             if(was_testing || input_test) { menu_draw(); goto present_frame; }
             if(game_count && (pressed&BTN_UP)) selected=(selected+game_count-1)%game_count;
             if(game_count && (pressed&BTN_DOWN)) selected=(selected+1)%game_count;
-            if(game_count && (pressed&BTN_PREV)) selected=selected>=8?selected-8:0;
-            if(game_count && (pressed&BTN_NEXT)) selected=selected+8<game_count?selected+8:game_count-1;
+            if(game_count && (pressed&BTN_PREV)) selected=selected>=6?selected-6:0;
+            if(game_count && (pressed&BTN_NEXT)) selected=selected+6<game_count?selected+6:game_count-1;
+#ifdef NPS64_UPDATES
+            if(pressed&BTN_UPDATE) nps64_updater_request();
+#endif
             if(pressed&BTN_SCAN) {
+#ifdef NPS64_HD_UI
+                covers_refresh();
+#endif
                 game_count=library_scan(games_dir,games,512); selected=0;
                 char text[160]; snprintf(text,sizeof(text),"Biblioteca actualizada: %zu ROMs. Pulsa X para abrir",game_count); notify(text);
             }
@@ -768,8 +822,8 @@ int main(void) {
             for(unsigned i=0;i<4;i++) if(connected[i]!=pads[i].connected) { connected[i]=pads[i].connected; retro_set_controller_port_device(i,connected[i]?RETRO_DEVICE_JOYPAD:RETRO_DEVICE_NONE); }
             if(pressed&BTN_PAUSE) { paused=!paused; pause_selected=0; platform_audio_clear(); }
             if(paused) {
-                if(pressed&BTN_UP) pause_selected=(pause_selected+5)%6;
-                if(pressed&BTN_DOWN) pause_selected=(pause_selected+1)%6;
+                if(pressed&BTN_UP) pause_selected=(pause_selected+PAUSE_CHOICES-1)%PAUSE_CHOICES;
+                if(pressed&BTN_DOWN) pause_selected=(pause_selected+1)%PAUSE_CHOICES;
                 if(pressed&BTN_LEFT) {slot=(slot+7)%8;config_save();}
                 if(pressed&BTN_RIGHT) {slot=(slot+1)%8;config_save();}
                 if(pressed&BTN_BACK) paused=false;
@@ -779,7 +833,10 @@ int main(void) {
                     else if(pause_selected==2) state_action(true);
                     else if(pause_selected==3) { widescreen=!widescreen;config_save(); }
                     else if(pause_selected==4) stop_game();
-                    else {filtered_vi=!filtered_vi;options_dirty=true;config_save();notify(filtered_vi?"Imagen precisa":"Imagen rapida: filtro VI desactivado");}
+                    else if(pause_selected==5) {filtered_vi=!filtered_vi;options_dirty=true;config_save();notify(filtered_vi?"Imagen precisa":"Imagen rapida: filtro VI desactivado");}
+#ifdef NPS64_UPDATES
+                    else if(pause_selected==6) nps64_updater_request();
+#endif
                 }
             }
             if(running && !paused) {
@@ -878,6 +935,12 @@ present_frame:
         pace_sum+=slept;
         if(requested_sleep && slept>requested_sleep)pace_overshoot_sum+=slept-requested_sleep;
     }
+#ifdef NPS64_UPDATES
+    nps64_updater_shutdown();
+#endif
+#ifdef NPS64_HD_UI
+    library_ui_shutdown();
+#endif
     if(running) stop_game();
 #ifdef NPS64_HLE_GAME
     nps64_hle_renderer_release(hle_renderer);
