@@ -18,6 +18,8 @@ int main(int argc,char **argv) {
     nps64_rom_put32(rom,0x80371240);
     nps64_rom_put32(rom+16,0x839f3ad5);nps64_rom_put32(rom+20,0x406d15fa);
     assert(!nps64_rom_compat(rom,0x1000000,digest)); /* payload guard */
+    nps64_rom_put32(rom+0x1070,0x7c000000);
+    assert(!nps64_rom_compat(rom,0x1000000,digest)); /* bootstrap alone is insufficient */
     assert(nps64_rom_be32(rom+16)==0x839f3ad5);
     if(argc==2) {
         FILE *file=fopen(argv[1],"rb");assert(file);

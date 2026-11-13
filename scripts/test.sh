@@ -5,6 +5,8 @@ mkdir -p build
 bash scripts/test_updater.sh
 bash scripts/test_covers.sh
 bash scripts/test_frame_pacing.sh
+clang -std=c11 -O2 -g -fsanitize=address,undefined -Wall -Wextra -Werror -Isrc tests/test_frame_stats.c -lm -o build/test-frame-stats
+build/test-frame-stats
 bash scripts/test_rom_compat.sh
 clang -std=c11 -O1 -g -fsanitize=address,undefined -Wall -Wextra -Werror -Isrc tests/test_cpu_game_profile.c -o build/test-cpu-game-profile
 build/test-cpu-game-profile
@@ -30,6 +32,7 @@ build/test-storage-run
 mkdir -p build/native-core
 tar -C vendor/parallel-n64 --exclude=.git -cf - . | tar -C build/native-core -xf -
 python3 scripts/patch_core.py build/native-core
+bash scripts/test_audio_field.sh build/native-core
 bash scripts/test_cpu_lane.sh build/native-core
 make -C build/native-core -j"${JOBS:-4}" platform=unix WITH_DYNAREC= HAVE_OPENGL=0 HAVE_PARALLEL=0 HAVE_PARALLEL_RSP=0 STATIC_LINKING=1 TARGET=parallel_n64.a CPUOPTS='-O2 -DNDEBUG -DNPS64_COMPRESSED_MEMORY' GIT_VERSION=890323d CC=clang CXX=clang++ AR=llvm-ar > build/native-core.log 2>&1 || { tail -80 build/native-core.log; exit 1; }
 python3 tests/make_test_rom.py

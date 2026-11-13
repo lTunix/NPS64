@@ -211,6 +211,9 @@ static void* allocateAligned(size_t alignment, size_t size) {
     return (void*)user;
 
 outOfMemory:
+#ifdef NPS64_GPU_GAME_TEST
+    nps64_boot_trace("heap allocation returned NULL");
+#endif
     errno = ENOMEM;
     return NULL;
 }

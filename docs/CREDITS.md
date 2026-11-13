@@ -44,3 +44,7 @@ con la configuración mspace de DolphinPS4; las fuentes se incluyen en src/third
 Carátulas: [Libretro Thumbnails](https://github.com/libretro-thumbnails/Nintendo_-_Nintendo_64). Las imágenes se descargan al usar la biblioteca y pertenecen a sus respectivos titulares.
 
 Decodificador PNG: [stb_image, Sean Barrett y colaboradores](https://github.com/nothings/stb), licencia MIT / dominio público incluida en el archivo fuente.
+
+El diagnóstico fatal del título Vulkan de prueba toma los offsets ABI FreeBSD/PS4
+de `port/ps4_crashlog.cpp` de [DolphinPS4](https://github.com/iHaiDeeZ/DolphinPS4/)
+(revisión 69360a1); la captura y escritura acotada se implementan en `src/gpu_crashlog.c`.

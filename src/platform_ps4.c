@@ -33,7 +33,7 @@ static int video=-1,audio=-1,active;
 static int64_t frame=1;
 static int64_t pending_flip;
 static uint32_t *canvas;
-#ifdef NPS64_GPU
+#if defined(NPS64_GPU) && !defined(NPS64_GPU_GAME_TEST)
 #define SCANOUT_BUFFERS 2
 #else
 #define SCANOUT_BUFFERS 3

@@ -26,3 +26,15 @@ done
 rm -f build/testdata/diagnostics.cfg
 
 TEST_PERF_HUD=1 build/test-frontend-jit
+python3 - <<'PY'
+from pathlib import Path
+import re
+log=Path('build/testdata/nps64.log').read_text()
+rows=re.findall(r'\[frame-times\] samples=(\d+) native=(\d+)x(\d+) work_mean_ms=([\d.]+) work_p50_upper_ms=([\d.]+) work_p95_upper_ms=([\d.]+) work_p99_upper_ms=([\d.]+) work_max_ms=([\d.]+)',log)
+assert rows, 'No frame timing distribution during gameplay'
+for count,width,height,mean,p50,p95,p99,maximum in rows:
+    assert int(count)>0 and int(width)>0 and int(height)>0
+    assert 0<=float(p50)<=float(p95)<=float(p99)<=float(maximum)
+    assert 0<=float(mean)<=float(maximum)
+print('PASS: frontend emits bounded, ordered gameplay timing distributions')
+PY

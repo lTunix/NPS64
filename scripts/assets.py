@@ -1,8 +1,9 @@
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
-root = Path('/work')
+root = Path(__file__).resolve().parents[1]
 stage = root / 'build/stage'
+(stage / 'sce_sys').mkdir(parents=True, exist_ok=True)
 font_path = '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf'
 font = ImageFont.truetype(font_path, 14)
 data = bytearray()
@@ -12,7 +13,7 @@ for code in range(128):
     data.extend(im.tobytes())
 (root / 'assets/font.bin').write_bytes(data)
 # Package the supplied artwork, trimming only its empty outer margins.
-logo = Image.open(root / 'icon.png').convert('RGBA')
+logo = Image.open(root / 'icon.jpeg').convert('RGBA')
 bounds = logo.convert('RGB').getbbox()
 if bounds:
     logo = logo.crop(bounds)

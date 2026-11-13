@@ -20,7 +20,17 @@ void nps64_boot_result(const char *label,int result) {
     line[n]=0;nps64_boot_trace(line);
 }
 static void early_boot(void) {
-#ifdef NPS64_HLE_GAME
+#ifdef NPS64_GUARD_COMPARE
+    nps64_boot_trace("guard compare 00.04 before main; no RDP dispatches");
+#elif defined(NPS64_PIPELINE_COMPILE_ONLY)
+    nps64_boot_trace("pipeline compile test 00.02 before main; no RDP dispatches");
+#elif defined(NPS64_MULTIWAVE_PROBE)
+    nps64_boot_trace("multiwave probe 00.03 before main; GPU constructors deferred");
+#elif defined(NPS64_COMPUTE_PROBE)
+    nps64_boot_trace("compute probe 00.01 before main; GPU constructors deferred");
+#elif defined(NPS64_GPU_GAME_TEST)
+    nps64_boot_trace("Vulkan game test 00.08 shader cache async split RDP before main; GPU constructors deferred");
+#elif defined(NPS64_HLE_GAME)
     nps64_boot_trace("00.27 game geometry snapshot before main; GPU constructors deferred");
 #elif defined(NPS64_HLE_PROBE)
     nps64_boot_trace("00.23 graphics probe before main; GPU constructors deferred");

@@ -1,35 +1,61 @@
-/* Offline Vulkan compute regression: independent of ROM, UI and emulator.
- * Host only. This is NOT a PS4 executable or proof of GNM correctness. */
+/* Shared host/PS4 compute diagnostic. A host PASS is not GNM validation. */
+#ifdef __ORBIS__
+#define VK_NO_PROTOTYPES
+#endif
 #include <vulkan/vulkan.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#ifdef __ORBIS__
+#include "log.h"
+#include "compute_probe_dispatch.h"
+#define printf nps64_log
+#define fprintf(stream,...) nps64_log(__VA_ARGS__)
+#endif
+#ifdef NPS64_MULTIWAVE_PROBE
+enum { PROBE_TESTS=5, PROBE_WORDS=1280 };
+#else
+enum { PROBE_TESTS=3, PROBE_WORDS=256 };
+#endif
 
 #define CHECK(call) do { VkResult r = (call); if (r != VK_SUCCESS) { \
-    fprintf(stderr, "%s: %d\n", #call, r); exit(1); } } while (0)
+    fprintf(stderr, "%s: %d\n", #call, r); return 1; } } while (0)
 
-int main(int argc, char **argv)
+int nps64_compute_probe(const char *path, unsigned first, unsigned count)
 {
-    if (argc != 2) return 2;
-    FILE *f = fopen(argv[1], "rb");
+    if (first>=PROBE_TESTS || !count || count>PROBE_TESTS-first) return 2;
+    printf("[compute-probe] begin first=%u count=%u\n",first,count);
+    FILE *f = fopen(path, "rb");
     if (!f) return 2;
     fseek(f, 0, SEEK_END); long bytes = ftell(f); rewind(f);
     if (bytes <= 0 || bytes % 4) return 2;
     uint32_t *code = malloc((size_t)bytes);
     if (!code || fread(code, 1, (size_t)bytes, f) != (size_t)bytes) return 2;
     fclose(f);
+#ifdef __ORBIS__
+    if(!probe_load_global())return 1;
+#endif
     VkInstance instance;
     VkApplicationInfo app = {.sType=VK_STRUCTURE_TYPE_APPLICATION_INFO, .apiVersion=VK_API_VERSION_1_1};
     VkInstanceCreateInfo ici = {.sType=VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, .pApplicationInfo=&app};
     CHECK(vkCreateInstance(&ici, NULL, &instance));
+#ifdef __ORBIS__
+    if(!probe_load_instance(instance))return 1;
+#endif
     uint32_t n=0; CHECK(vkEnumeratePhysicalDevices(instance, &n, NULL));
     if (!n) return 1;
     VkPhysicalDevice *devices=calloc(n,sizeof(*devices));
     CHECK(vkEnumeratePhysicalDevices(instance, &n, devices));
     VkPhysicalDevice physical=devices[0]; free(devices);
     VkPhysicalDeviceProperties props; vkGetPhysicalDeviceProperties(physical,&props);
-    printf("device=%s (host; no PS4 validation)\n",props.deviceName);
+    printf("[compute-probe] device=%s vendor=%04x device_id=%04x\n",props.deviceName,props.vendorID,props.deviceID);
+#ifndef __ORBIS__
+    int offline=getenv("NPS64_COMPILE_ONLY")!=NULL;
+    if(offline && !strstr(props.deviceName,"BONAIRE")) {
+        fprintf(stderr,"Offline target must be BONAIRE\n");return 2;
+    }
+#endif
     vkGetPhysicalDeviceQueueFamilyProperties(physical,&n,NULL);
     VkQueueFamilyProperties *families=calloc(n,sizeof(*families));
     vkGetPhysicalDeviceQueueFamilyProperties(physical,&n,families);
@@ -40,9 +66,13 @@ int main(int argc, char **argv)
     VkDeviceQueueCreateInfo qci={.sType=VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,.queueFamilyIndex=family,.queueCount=1,.pQueuePriorities=&priority};
     VkDeviceCreateInfo dci={.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,.queueCreateInfoCount=1,.pQueueCreateInfos=&qci};
     VkDevice device; CHECK(vkCreateDevice(physical,&dci,NULL,&device));
+#ifdef __ORBIS__
+    if(!probe_load_device(device))return 1;
+#endif
+    printf("[compute-probe] device ready; family=%u\n",family);
     VkQueue queue; vkGetDeviceQueue(device,family,0,&queue);
     VkBuffer buffer;
-    VkBufferCreateInfo bci={.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,.size=256*sizeof(uint32_t),.usage=VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,.sharingMode=VK_SHARING_MODE_EXCLUSIVE};
+    VkBufferCreateInfo bci={.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,.size=PROBE_WORDS*sizeof(uint32_t),.usage=VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,.sharingMode=VK_SHARING_MODE_EXCLUSIVE};
     CHECK(vkCreateBuffer(device,&bci,NULL,&buffer));
     VkMemoryRequirements req; vkGetBufferMemoryRequirements(device,buffer,&req);
     VkPhysicalDeviceMemoryProperties memory; vkGetPhysicalDeviceMemoryProperties(physical,&memory);
@@ -77,13 +107,31 @@ int main(int argc, char **argv)
     VkFenceCreateInfo fci={.sType=VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
     VkFence fence; CHECK(vkCreateFence(device,&fci,NULL,&fence));
     VkSpecializationMapEntry entries[]={{0,0,4},{1,4,4}};
-    for(uint32_t test=0;test<3;test++) {
+    for(uint32_t test=first;test<first+count;test++) {
         uint32_t constants[]={test==1?32u:64u,test==0?0u:1u};
+#ifdef NPS64_MULTIWAVE_PROBE
+        const uint32_t workgroups[]={64,32,64,128,256};
+        constants[0]=workgroups[test];
+#endif
         VkSpecializationInfo spec={2,entries,sizeof(constants),constants};
         VkComputePipelineCreateInfo pci={.sType=VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
             .stage={.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,.stage=VK_SHADER_STAGE_COMPUTE_BIT,.module=shader,.pName="main",.pSpecializationInfo=&spec},.layout=layout};
+        printf("[compute-probe] pipeline begin test=%u local=%u\n",test,constants[0]);
         VkPipeline pipeline; CHECK(vkCreateComputePipelines(device,VK_NULL_HANDLE,1,&pci,NULL,&pipeline));
+        printf("[compute-probe] pipeline ready test=%u\n",test);
+#ifndef __ORBIS__
+        if(offline) {
+            printf("COMPILE ONLY local=%u: no command submission or output validation\n",constants[0]);
+            vkDestroyPipeline(device,pipeline,NULL);continue;
+        }
+#endif
         memset(mapped,0xcd,(size_t)bci.size);
+#ifdef NPS64_MULTIWAVE_PROBE
+        const uint32_t seed=0xa5a51e3bu;
+        mapped[PROBE_WORDS-1]=seed;
+        uint32_t population=0;
+        for(uint32_t value=seed;value;value&=value-1)population++;
+#endif
         CHECK(vkResetCommandBuffer(cmd,0));
         VkCommandBufferBeginInfo begin={.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
         CHECK(vkBeginCommandBuffer(cmd,&begin));
@@ -99,11 +147,17 @@ int main(int argc, char **argv)
         }
         CHECK(vkEndCommandBuffer(cmd));
         VkSubmitInfo submit={.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO,.commandBufferCount=1,.pCommandBuffers=&cmd};
+        printf("[compute-probe] submit begin test=%u\n",test);
         CHECK(vkQueueSubmit(queue,1,&submit,fence));
+        printf("[compute-probe] fence wait test=%u timeout_ms=5000\n",test);
         // A host timeout detects failure; it cannot reset a hung physical GPU.
         CHECK(vkWaitForFences(device,1,&fence,VK_TRUE,5000000000ull));
-        for(uint32_t i=0;i<256;i++) {
+        for(uint32_t i=0;i<PROBE_WORDS;i++) {
             uint32_t expected=i<constants[0]*4?(test==0?(i^0x64a5u):32u):0xcdcdcdcdu;
+#ifdef NPS64_MULTIWAVE_PROBE
+            if(test && i<constants[0]*4)expected=population;
+            if(i==PROBE_WORDS-1)expected=seed;
+#endif
             if(mapped[i]!=expected) {fprintf(stderr,"probe=%u index=%u actual=%x expected=%x\n",test,i,mapped[i],expected);return 1;}
         }
         printf("PASS %s local=%u: two dispatches, dependency, exact output and guard\n",test==0?"storage":"LDS/atomic/barrier/bitmask",constants[0]);
@@ -117,3 +171,10 @@ int main(int argc, char **argv)
     vkDestroyDevice(device,NULL); vkDestroyInstance(instance,NULL);
     return 0;
 }
+#ifndef __ORBIS__
+int main(int argc,char **argv) {
+    if(argc!=2 && argc!=3)return 2;
+    unsigned first=argc==3?(unsigned)strtoul(argv[2],NULL,10):0;
+    return nps64_compute_probe(argv[1],first,argc==3?1:PROBE_TESTS);
+}
+#endif

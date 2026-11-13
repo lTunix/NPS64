@@ -20,6 +20,8 @@ static double race_ms,worst_race;
 static unsigned race_samples;
 static unsigned limit=180;
 static size_t live_audio_frames;
+static size_t audio_frames,audio_batches,audio_nonzero;
+static double audio_seconds;
 static bool hle_capture_pending,hle_capture_saved,hle_capture_last;
 static bool race;
 bool platform_init(void) {
@@ -31,6 +33,7 @@ bool platform_init(void) {
 }
 void platform_shutdown(void) {
     printf("BENCH live_audio_frames=%zu\n",live_audio_frames);
+    if(getenv("BENCH_AUDIO_CHECK"))printf("AUDIO total frames=%zu batches=%zu seconds=%.9f nonzero=%zu\n",audio_frames,audio_batches,audio_seconds,audio_nonzero);
     printf("BENCH menu_samples=%u avg_ms=%.3f max_ms=%.3f\n",menu_samples,menu_ms/(menu_samples?menu_samples:1),worst_menu);
     printf("BENCH game_samples=%u avg_ms=%.3f max_ms=%.3f effective_fps=%.2f lit_frames=%u\n",game_samples,game_ms/(game_samples?game_samples:1),worst_game,game_ms?1000.0*game_samples/game_ms:0,lit_frames);
     if(race_samples)printf("BENCH race_samples=%u avg_ms=%.3f max_ms=%.3f effective_fps=%.2f\n",race_samples,race_ms/race_samples,worst_race,1000.0*race_samples/race_ms);
@@ -144,6 +147,11 @@ bool platform_present(void) {
 }
 void platform_audio(const int16_t *s,size_t n,double r) {
     (void)s;(void)n;(void)r;
+    if(getenv("BENCH_AUDIO_CHECK")){
+        audio_frames+=n;audio_batches++;audio_seconds+=n/r;
+        for(size_t i=0;i<n*2;i++)audio_nonzero+=s[i]!=0;
+        if(audio_batches%300==0)printf("AUDIO batch=%zu frames=%zu seconds=%.9f rate=%.9f nonzero=%zu\n",audio_batches,audio_frames,audio_seconds,r,audio_nonzero);
+    }
 #ifdef NPS64_HLE_GAME
     if(nps64_hle_is_live())live_audio_frames+=n;
 #endif

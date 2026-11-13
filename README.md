@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icon.png" alt="NPS64 by lTunix" width="480">
+  <img src="icon.jpeg" alt="NPS64 by lTunix" width="480">
 </p>
 
 <h1 align="center">NPS64 by lTunix</h1>

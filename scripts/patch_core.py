@@ -3,6 +3,13 @@ from pathlib import Path
 import sys
 
 root = Path(sys.argv[1])
+from patch_audio import patch_audio
+patch_audio(root)
+
+# This file used uintptr_t through transitive includes on Linux. OpenOrbis
+# libc++ requires its defining header explicitly.
+path = root / 'mupen64plus-video-paraLLEl/parallel-rdp/util/aligned_alloc.cpp'
+path.write_text('#include <stdint.h>\n' + path.read_text())
 
 # The supplied Mario Tennis VC dump has a stale IPL3 checksum. Repair only
 # its checked in-memory header, after retaining the original database identity.
@@ -13,7 +20,7 @@ old = '    DebugMessage(M64MSG_VERBOSE, "Save type: %d", ROM_SETTINGS.savetype);
 assert text.count(old) == 1, 'Review ROM compatibility hook ordering'
 text = text.replace(old, old + '''
     if (nps64_rom_compat((uint8_t*)mem_base_u32(g_mem_base, MM_CART_ROM), g_rom_size, digest))
-        DebugMessage(M64MSG_INFO, "NPS64 compatibility: Mario Tennis VC runtime IPL3 CRC repaired; original ROM identity retained");''')
+        DebugMessage(M64MSG_INFO, "NPS64 compatibility: Mario Tennis VC runtime CRC repaired; original ROM identity retained");''')
 path.write_text(text)
 path.with_name('nps64_rom_compat.h').write_bytes(
     (Path(__file__).resolve().parent.parent / 'src/rom_compat.h').read_bytes())
