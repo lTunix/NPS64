@@ -26,6 +26,7 @@ static inline Input input_ps4_decode(const OrbisPadData *p) {
     if(b&ORBIS_PAD_BUTTON_TRIANGLE) in.buttons|=BTN_HELP;
     if((b&ORBIS_PAD_BUTTON_L2) || p->analogButtons.l2>100) in.buttons|=BTN_UPDATE;
     if(b&ORBIS_PAD_BUTTON_OPTIONS) in.buttons|=BTN_EXIT;
+    if((b&ORBIS_PAD_BUTTON_R2) || p->analogButtons.r2>100) in.buttons|=BTN_GAME_SETTINGS;
     if(b&ORBIS_PAD_BUTTON_L1) in.buttons|=BTN_PREV;
     if(b&ORBIS_PAD_BUTTON_R1) in.buttons|=BTN_NEXT;
     if((b&(ORBIS_PAD_BUTTON_L3|ORBIS_PAD_BUTTON_R3))==(ORBIS_PAD_BUTTON_L3|ORBIS_PAD_BUTTON_R3)) in.buttons|=BTN_PAUSE;

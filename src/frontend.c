@@ -1,6 +1,7 @@
 /* NPS64 PS4 frontend. SPDX-License-Identifier: GPL-2.0-or-later */
 #include "platform.h"
 #include "storage.h"
+#include "settings.h"
 #include "log.h"
 #include "gpu.h"
 #ifdef NPS64_GPU_GAME_TEST
@@ -18,9 +19,9 @@
 #endif
 #ifdef NPS64_UPDATES
 #include "updater.h"
-#define PAUSE_CHOICES 8
+#define PAUSE_CHOICES 9
 #else
-#define PAUSE_CHOICES 7
+#define PAUSE_CHOICES 8
 #endif
 #ifdef NPS64_HLE_GAME
 #include "hle_game_geometry.h"
@@ -53,6 +54,15 @@ static const char games_dir[]=DATA_ROOT "/games", saves_dir[]=DATA_ROOT "/saves"
 #define CONFIG_PATH DATA_ROOT "/settings.cfg"
 #define DIAGNOSTICS_PATH DATA_ROOT "/diagnostics.cfg"
 #endif
+#ifdef NPS64_GPU_GAME_TEST
+#define GAME_SETTINGS_DIR DATA_ROOT "/vulkan-test-game-settings"
+#else
+#define GAME_SETTINGS_DIR DATA_ROOT "/game-settings"
+#endif
+static Nps64AppSettings preferences;
+static Nps64GameSettings editing_game;
+static unsigned settings_page,settings_row,sidebar_selected;
+static bool sidebar_focus;
 static Game games[512],current;
 static size_t game_count,selected;
 static Input pads[4];
@@ -516,9 +526,22 @@ static void state_action(bool load) {
 #endif
     notify(ok ? (load?"Estado cargado":"Estado guardado") : (load?"Estado vacio, incompatible o corrupto":"No se pudo guardar estado"));
 }
+static void apply_game_settings(const Nps64GameSettings *s) {
+    widescreen=s->widescreen;filtered_vi=s->filtered_vi;slot=s->slot;controller_pak=s->controller_pak;
+}
 static void config_save(void) {
-    char text[64]; int n=snprintf(text,sizeof(text),"NPS64CFG3 %u %u %u %u %u\n",theme,widescreen,slot,filtered_vi,controller_pak);
-    if(!file_write_atomic(CONFIG_PATH,text,(size_t)n)) notify("No se pudo guardar configuracion");
+    preferences.theme=theme;
+    if(!nps64_settings_save(CONFIG_PATH,&preferences))notify("No se pudo guardar configuracion");
+}
+static void game_config_save(void) {
+    Nps64GameSettings s={widescreen,filtered_vi,slot,controller_pak};
+    if(!nps64_game_settings_save(GAME_SETTINGS_DIR,current.key,&s))notify("No se pudo guardar ajuste del juego");
+}
+static bool open_game_settings(void) {
+    if(!game_count)return false;
+    if(strncmp(games[selected].key,"rom-",4)!=0 && !rom_content_key(&games[selected])){notify("No se pudo leer la ROM");return false;}
+    nps64_game_settings_load(GAME_SETTINGS_DIR,games[selected].key,&preferences.defaults,&editing_game);
+    settings_page=2;settings_row=0;sidebar_focus=false;return true;
 }
 static bool start_game(void) {
 #ifdef NPS64_GPU_GAME_TEST
@@ -540,6 +563,10 @@ static bool start_game(void) {
     if(!rom_content_key(&current)) {notify("No se pudo leer la ROM completa");return false;}
     nps64_log("[load] hash_ok key=%s seconds=%.3f\n",current.key,platform_time()-started);
 
+    games[selected]=current;
+    Nps64GameSettings game_settings;
+    nps64_game_settings_load(GAME_SETTINGS_DIR,current.key,&preferences.defaults,&game_settings);
+    apply_game_settings(&game_settings);
     use_gpu=requested_gpu && nps64_gpu_begin();
 #ifdef NPS64_GPU_GAME_TEST
     if(!use_gpu){notify("No se pudo iniciar Vulkan. Consulta vulkan-game-test.log");return false;}
@@ -578,6 +605,10 @@ static bool start_game(void) {
     struct stat st;
     bool bad_save=p && n && stat(path,&st)==0 && !file_read_exact(path,p,n);
     if(bad_save) ram_writes_allowed=false;
+#ifdef NPS64_HD_UI
+    covers_set_paused(true);
+#endif
+    settings_page=0;sidebar_focus=false;
     running=true; paused=false; last_autosave=platform_time(); platform_audio_clear();
 #ifdef NPS64_GPU_GAME_TEST
     game_test_started=platform_time();game_test_limit_reached=false;
@@ -599,25 +630,63 @@ static void stop_game(void) {
 #endif
     platform_rumble_clear();
     save_ram(); retro_unload_game(); nps64_gpu_destroy_context(); retro_deinit(); nps64_gpu_close();use_gpu=false; running=false; paused=false; platform_audio_clear();
+    apply_game_settings(&preferences.defaults);
+#ifdef NPS64_HD_UI
+    covers_set_paused(false);
+#endif
 }
 static void rect(int x,int y,int w,int h,uint32_t color) {
     uint32_t *fb=platform_framebuffer();
     for(int py=y;py<y+h && py<SCREEN_H;py++) for(int px=x;px<x+w && px<SCREEN_W;px++) if(px>=0 && py>=0) fb[py*SCREEN_W+px]=color;
 }
 static void game_hud_draw(void) {
+    if(!preferences.hud_mode)return;
     char text[160];
     const char *renderer=use_gpu?"GPU Vulkan":"CPU Angrylion";
 #ifdef NPS64_HLE_GAME
     if(hle_continuous)renderer=hle_frame_ready?"Vulkan + ref CPU":"CPU (fallback Vulkan)";
 #endif
     double target=av.timing.fps,speed=target>0?100*game_fps/target:0;
-    rect(16,12,SCREEN_W-32,44,0xff101820);
+    rect(16,12,SCREEN_W-32,preferences.hud_mode==1?24:44,0xff101820);
     snprintf(text,sizeof(text),"FPS %.1f / %.0f | velocidad %.0f%% | CPU %s | %s",
              game_fps,target,speed,use_jit?"Ari64":"cached",renderer);
     platform_text(24,17,text,0xffeeeeee,1);
+    if(preferences.hud_mode==1)return;
     snprintf(text,sizeof(text),"core %.1f ms [RDP %.1f VI %.1f] | dibujo %.1f | flip %.1f ms | video %.1f FPS",
              perf_core_ms,perf_rdp_ms,perf_vi_ms,perf_draw_ms,perf_flip_ms,video_fps);
     platform_text(24,36,text,0xffadbcd2,1);
+}
+static const char *hud_label(void) {return preferences.hud_mode==0?"Informacion en juego: oculta":preferences.hud_mode==1?"Informacion en juego: FPS":"Informacion en juego: FPS y detalles";}
+static void settings_draw(void) {
+    char rows[8][128];const char *labels[8];unsigned count=settings_page==2?7:8;
+    Nps64GameSettings *g=settings_page==2?&editing_game:&preferences.defaults;
+    if(settings_page==2) {
+        snprintf(rows[0],128,"Aspecto: %s",g->widescreen?"16:9":"4:3 (nativo)");
+        snprintf(rows[1],128,"Filtro VI: %s",g->filtered_vi?"preciso":"rapido");
+        snprintf(rows[2],128,"Accesorio: %s",g->controller_pak==0?"Rumble Pak":g->controller_pak==1?"Memory Pak":"ninguno");
+        snprintf(rows[3],128,"Ranura de estado: %u",g->slot);
+        snprintf(rows[4],128,"Restablecer ajustes de este juego");snprintf(rows[5],128,"Jugar");snprintf(rows[6],128,"Volver");
+    } else {
+        snprintf(rows[0],128,"%s",hud_label());snprintf(rows[1],128,"Tema: %u / 3",theme+1);
+        snprintf(rows[2],128,"Filtro VI predeterminado: %s",g->filtered_vi?"preciso":"rapido");
+        snprintf(rows[3],128,"Accesorio predeterminado: %s",g->controller_pak==0?"Rumble Pak":g->controller_pak==1?"Memory Pak":"ninguno");
+        snprintf(rows[4],128,"Ranura predeterminada: %u",g->slot);
+        snprintf(rows[5],128,"Ajustes del juego seleccionado");
+#ifdef NPS64_UPDATES
+        snprintf(rows[6],128,"Buscar actualizaciones");
+#else
+        snprintf(rows[6],128,"Actualizar caratulas");
+#endif
+        snprintf(rows[7],128,"Volver a biblioteca");
+    }
+    for(unsigned i=0;i<count;i++)labels[i]=rows[i];
+#ifdef NPS64_HD_UI
+    library_ui_settings(settings_page==2?"Ajustes del juego":"Configuracion",settings_page==2?games[selected].name:"Valores generales; el aspecto se guarda por juego",labels,count,settings_row,sidebar_focus,sidebar_selected,accent[theme],message);
+#else
+    platform_text(64,150,settings_page==2?games[selected].name:"CONFIGURACION",accent[theme],2);
+    for(unsigned i=0;i<count;i++){if(i==settings_row)rect(48,195+i*45,1180,40,0xff263b51);platform_text(64,203+i*45,labels[i],i==settings_row?accent[theme]:0xffeeeeee,2);}
+    platform_text(64,620,"X / Izq / Der: cambiar | Circulo: volver | Menu 16:9",accent[theme],1);
+#endif
 }
 static void menu_draw(void) {
     rect(0,0,SCREEN_W,SCREEN_H,0xff101e30);
@@ -640,13 +709,15 @@ static void menu_draw(void) {
         return;
     }
 #ifdef NPS64_HD_UI
+    if(settings_page){settings_draw();return;}
     char updates[160]="";
 #ifdef NPS64_UPDATES
     nps64_updater_status(updates,sizeof(updates),NULL);
 #endif
-    library_ui_draw(games,game_count,selected,accent[theme],message,updates);
+    library_ui_draw(games,game_count,selected,accent[theme],message,updates,sidebar_focus,sidebar_selected);
     return;
 #endif
+    if(settings_page){settings_draw();return;}
     if(!game_count) {
         platform_text(64,235,"No hay ROMs validas. Formatos: .z64 .v64 .n64",0xffeeeeee,2);
         platform_text(64,280,"Copia tus juegos en /data/NPS64/games",accent[theme],2);
@@ -666,7 +737,7 @@ static void menu_draw(void) {
 #ifdef NPS64_GPU_GAME_TEST
     platform_text(64,565,"Shaders: generales en GPU + variantes en segundo plano",accent[theme],1);
 #endif
-    platform_text(64,633,"Triangulo: probar mando | Options: salir | Izq/Der: tema",0xffadbcd2,2);
+    platform_text(64,633,"L2: configuracion | R2: ajustes del juego | Options: salir",0xffadbcd2,2);
 #ifdef NPS64_UPDATES
     char update[144];nps64_updater_status(update,sizeof(update),NULL);
     platform_text(64,565,update,accent[theme],1);
@@ -678,11 +749,11 @@ static void pause_draw(void) {
     rect(275,95,730,510,0xff101e30); rect(275,95,730,5,accent[theme]);
     platform_text(320,128,"PAUSA",accent[theme],3);
 #endif
-    const char *labels[]={"Continuar","Guardar estado","Cargar estado","Aspecto 4:3 / 16:9","Volver a biblioteca",filtered_vi?"Imagen: precisa (X: rapida)":"Imagen: rapida (X: precisa)"
+    const char *labels[]={"Continuar","Guardar estado","Cargar estado",widescreen?"Aspecto del juego: 16:9":"Aspecto del juego: 4:3","Volver a biblioteca",filtered_vi?"Imagen: precisa (X: rapida)":"Imagen: rapida (X: precisa)"
 #ifdef NPS64_UPDATES
         ,"Buscar actualizaciones"
 #endif
-        ,controller_pak==0?"Accesorio: Rumble Pak":controller_pak==1?"Accesorio: Memory Pak":"Accesorio: ninguno"
+        ,hud_label(),controller_pak==0?"Accesorio: Rumble Pak":controller_pak==1?"Accesorio: Memory Pak":"Accesorio: ninguno"
     };
 #ifdef NPS64_HD_UI
     char updates[160]="";
@@ -693,8 +764,8 @@ static void pause_draw(void) {
     return;
 #endif
     for(unsigned i=0;i<PAUSE_CHOICES;i++) {
-        if(pause_selected==i) rect(310,207+(int)i*42,650,39,0xff263b51);
-        platform_text(325,215+(int)i*42,labels[i],pause_selected==i?accent[theme]:0xffeeeeee,2);
+        if(pause_selected==i) rect(310,183+(int)i*36,650,33,0xff263b51);
+        platform_text(325,189+(int)i*36,labels[i],pause_selected==i?accent[theme]:0xffeeeeee,2);
     }
     char text[100]; snprintf(text,sizeof(text),"Ranura: %u / 7  |  Izq/Der: cambiar",slot);
     platform_text(320,525,text,0xffadbcd2,2);
@@ -713,8 +784,8 @@ int main(void) {
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
 #ifdef NPS64_GPU_GAME_TEST
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.13.log");
-    nps64_log("NPS64 Vulkan Game Test 00.13; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.14.log");
+    nps64_log("NPS64 Vulkan Game Test 00.14; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
@@ -725,9 +796,9 @@ int main(void) {
 #elif defined(NPS64_GPU_EXPERIMENTAL)
     nps64_log("NPS64 00.19 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.13 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.14 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.13 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.14 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
@@ -735,17 +806,7 @@ int main(void) {
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion\n");
 #endif
 #endif
-    FILE *cfg=fopen(CONFIG_PATH,"r");
-    if(cfg) {
-        char format[20];unsigned t,w,s,f=filtered_vi,pak=0;
-        int count=fscanf(cfg,"%19s %u %u %u %u %u",format,&t,&w,&s,&f,&pak);
-        if(count>=4 && t<3 && w<2 && s<8 && f<2 &&
-           (!strcmp(format,"NPS64CFG1") || !strcmp(format,"NPS64CFG2") || !strcmp(format,"NPS64CFG3"))) {
-            theme=t;widescreen=w;slot=s;if(count>=5 && strcmp(format,"NPS64CFG1"))filtered_vi=f!=0;
-            if(count==6 && !strcmp(format,"NPS64CFG3") && pak<3)controller_pak=pak;
-        }
-        fclose(cfg);
-    }
+    nps64_settings_load(CONFIG_PATH,&preferences);theme=preferences.theme;apply_game_settings(&preferences.defaults);
     FILE *diag=fopen(DIAGNOSTICS_PATH,"r");
     if(diag) {
         char format[20]; unsigned workers,hle=1,cpu=1,filter=filtered_vi,gpu=1;
@@ -781,6 +842,7 @@ int main(void) {
     requested_gpu=0;
     nps64_log("[renderer] CPU Angrylion; Vulkan not included\n");
 #endif
+    preferences.defaults.filtered_vi=filtered_vi;
     nps64_log("[diag] cpu_requested=%u rsp=%s workers=%u vi=%s\n",requested_cpu,diagnostic_hle?"hle":"cxd4",diagnostic_workers,filtered_vi?"filtered":"fast");
 #ifdef __ORBIS__
     extern const char *ps4rt_heap_source(void);
@@ -832,6 +894,51 @@ int main(void) {
             if(pressed&BTN_HELP) input_test=!input_test;
             if(was_testing && (pressed&BTN_BACK)) input_test=false;
             if(was_testing || input_test) { menu_draw(); goto present_frame; }
+            if(pressed&BTN_UPDATE){settings_page=1;settings_row=0;sidebar_selected=1;sidebar_focus=false;menu_draw();goto present_frame;}
+            if(pressed&BTN_GAME_SETTINGS){open_game_settings();menu_draw();goto present_frame;}
+            if(sidebar_focus) {
+                if(pressed&(BTN_UP|BTN_DOWN))sidebar_selected^=1;
+                if(pressed&(BTN_CONFIRM|BTN_RIGHT)){settings_page=sidebar_selected;settings_row=0;sidebar_focus=false;}
+                if(pressed&BTN_BACK)sidebar_focus=false;
+                if(pressed&BTN_EXIT)quit_requested=true;
+                menu_draw();goto present_frame;
+            }
+            if(settings_page) {
+                unsigned count=settings_page==2?7:8;
+                if(pressed&BTN_UP)settings_row=(settings_row+count-1)%count;
+                if(pressed&BTN_DOWN)settings_row=(settings_row+1)%count;
+                if(pressed&BTN_BACK){settings_page=0;sidebar_selected=0;}
+                else if(pressed&(BTN_CONFIRM|BTN_LEFT|BTN_RIGHT)) {
+                    unsigned delta=(pressed&BTN_LEFT)?7:1;
+                    if(settings_page==2) {
+                        if(settings_row==0)editing_game.widescreen=!editing_game.widescreen;
+                        if(settings_row==1)editing_game.filtered_vi=!editing_game.filtered_vi;
+                        if(settings_row==2)editing_game.controller_pak=(editing_game.controller_pak+((pressed&BTN_LEFT)?2:1))%3;
+                        if(settings_row==3)editing_game.slot=(editing_game.slot+delta)%8;
+                        if(settings_row<4 && !nps64_game_settings_save(GAME_SETTINGS_DIR,games[selected].key,&editing_game))notify("No se pudo guardar ajuste del juego");
+                        if((pressed&BTN_CONFIRM)&&settings_row==4){if(nps64_game_settings_reset(GAME_SETTINGS_DIR,games[selected].key))nps64_game_settings_load(GAME_SETTINGS_DIR,games[selected].key,&preferences.defaults,&editing_game);else notify("No se pudo restablecer");}
+                        if((pressed&BTN_CONFIRM)&&settings_row==5)start_game();
+                        if((pressed&BTN_CONFIRM)&&settings_row==6){settings_page=0;sidebar_selected=0;}
+                    } else {
+                        if(settings_row==0)preferences.hud_mode=(preferences.hud_mode+((pressed&BTN_LEFT)?2:1))%3;
+                        if(settings_row==1)theme=(theme+((pressed&BTN_LEFT)?2:1))%3;
+                        if(settings_row==2)preferences.defaults.filtered_vi=!preferences.defaults.filtered_vi;
+                        if(settings_row==3)preferences.defaults.controller_pak=(preferences.defaults.controller_pak+((pressed&BTN_LEFT)?2:1))%3;
+                        if(settings_row==4)preferences.defaults.slot=(preferences.defaults.slot+delta)%8;
+                        if(settings_row<5){config_save();apply_game_settings(&preferences.defaults);}
+                        if((pressed&BTN_CONFIRM)&&settings_row==5)open_game_settings();
+#ifdef NPS64_UPDATES
+                        if((pressed&BTN_CONFIRM)&&settings_row==6)nps64_updater_request();
+#elif defined(NPS64_HD_UI)
+                        if((pressed&BTN_CONFIRM)&&settings_row==6){covers_refresh();notify("Caratulas actualizadas");}
+#endif
+                        if((pressed&BTN_CONFIRM)&&settings_row==7){settings_page=0;sidebar_selected=0;}
+                    }
+                }
+                if(pressed&BTN_EXIT)quit_requested=true;
+                if(!running)menu_draw();goto present_frame;
+            }
+            if(pressed&BTN_LEFT){sidebar_focus=true;sidebar_selected=0;menu_draw();goto present_frame;}
             if(game_count && (pressed&BTN_UP)) selected=(selected+game_count-1)%game_count;
             if(game_count && (pressed&BTN_DOWN)) selected=(selected+1)%game_count;
             if(game_count && (pressed&BTN_PREV)) selected=selected>=6?selected-6:0;
@@ -846,7 +953,7 @@ int main(void) {
                 game_count=library_scan(games_dir,games,512); selected=0;
                 char text[160]; snprintf(text,sizeof(text),"Biblioteca actualizada: %zu ROMs. Pulsa X para abrir",game_count); notify(text);
             }
-            if(pressed&(BTN_LEFT|BTN_RIGHT)) { theme=(theme+((pressed&BTN_RIGHT)?1:2))%3; config_save(); }
+
             if((pressed&BTN_CONFIRM) && game_count) start_game();
             if(pressed&BTN_BACK) notify("Ya estas en la biblioteca. X: abrir | Cuadrado: buscar");
             if(pressed&BTN_EXIT) quit_requested=true;
@@ -900,17 +1007,18 @@ int main(void) {
             if(paused) {
                 if(pressed&BTN_UP) pause_selected=(pause_selected+PAUSE_CHOICES-1)%PAUSE_CHOICES;
                 if(pressed&BTN_DOWN) pause_selected=(pause_selected+1)%PAUSE_CHOICES;
-                if(pressed&BTN_LEFT) {slot=(slot+7)%8;config_save();}
-                if(pressed&BTN_RIGHT) {slot=(slot+1)%8;config_save();}
+                if(pressed&BTN_LEFT) {slot=(slot+7)%8;game_config_save();}
+                if(pressed&BTN_RIGHT) {slot=(slot+1)%8;game_config_save();}
                 if(pressed&BTN_BACK) paused=false;
                 if(pressed&BTN_CONFIRM) {
-                    if(pause_selected==PAUSE_CHOICES-1) {controller_pak=(controller_pak+1)%3;options_dirty=true;platform_rumble_clear();config_save();notify("Accesorio cambiado para los cuatro mandos");}
+                    if(pause_selected==PAUSE_CHOICES-1) {controller_pak=(controller_pak+1)%3;options_dirty=true;platform_rumble_clear();game_config_save();notify("Accesorio cambiado para los cuatro mandos");}
+                    else if(pause_selected==PAUSE_CHOICES-2){preferences.hud_mode=(preferences.hud_mode+1)%3;config_save();}
                     else if(pause_selected==0) paused=false;
                     else if(pause_selected==1) state_action(false);
                     else if(pause_selected==2) state_action(true);
-                    else if(pause_selected==3) { widescreen=!widescreen;config_save(); }
+                    else if(pause_selected==3) { widescreen=!widescreen;game_config_save(); }
                     else if(pause_selected==4) stop_game();
-                    else if(pause_selected==5) {filtered_vi=!filtered_vi;options_dirty=true;config_save();notify(filtered_vi?"Imagen precisa":"Imagen rapida: filtro VI desactivado");}
+                    else if(pause_selected==5) {filtered_vi=!filtered_vi;options_dirty=true;game_config_save();notify(filtered_vi?"Imagen precisa":"Imagen rapida: filtro VI desactivado");}
 #ifdef NPS64_UPDATES
                     else if(pause_selected==6) nps64_updater_request();
 #endif

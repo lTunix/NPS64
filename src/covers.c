@@ -24,7 +24,7 @@ typedef struct {char name[256];uint32_t *pixels;int w,h;unsigned stamp;bool atte
 static Slot slots[8];static char queue[8][256];static unsigned count,clock_id;
 static pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t ready=PTHREAD_COND_INITIALIZER;
-static pthread_t thread;static bool started,stop;
+static pthread_t thread;static bool started,stop,paused;
 static char *catalog;static char state[96]="Caratulas: disponibles sin conexion al descargarlas";
 static void set_state(const char *text){pthread_mutex_lock(&mutex);snprintf(state,sizeof(state),"%s",text);pthread_mutex_unlock(&mutex);}
 static unsigned char *read_png(const char *path,int *bytes) {
@@ -38,7 +38,7 @@ static uint32_t *decode(const unsigned char *data,int bytes,int *w,int *h) {
 }
 static bool stopping(void){pthread_mutex_lock(&mutex);bool value=stop;pthread_mutex_unlock(&mutex);return value;}
 static void *worker(void *unused) {
-    (void)unused;for(;;){char name[256];pthread_mutex_lock(&mutex);while(!stop&&!count)pthread_cond_wait(&ready,&mutex);if(stop){pthread_mutex_unlock(&mutex);break;}
+    (void)unused;for(;;){char name[256];pthread_mutex_lock(&mutex);while(!stop&&(paused||!count))pthread_cond_wait(&ready,&mutex);if(stop){pthread_mutex_unlock(&mutex);break;}
         snprintf(name,sizeof(name),"%s",queue[0]);for(unsigned i=1;i<count;i++)memcpy(queue[i-1],queue[i],256);count--;pthread_mutex_unlock(&mutex);
         char key[17],path[1024],filename[256],url[1024];cover_key(name,key);snprintf(path,sizeof(path),COVER_ROOT "/%s.png",key);
         int bytes=0,w=0,h=0;unsigned char *data=NULL;uint32_t *pixels=NULL;
@@ -63,7 +63,7 @@ static void *worker(void *unused) {
 }
 void covers_init(void) {
     mkdir(COVER_ROOT,0777);FILE *f=fopen("/app0/cover-catalog.txt","rb");if(f){catalog=calloc(1,256*1024+1);if(catalog)fread(catalog,1,256*1024,f);fclose(f);}
-    stop=false;if(!pthread_create(&thread,NULL,worker,NULL))started=true;
+    stop=false;paused=false;if(!pthread_create(&thread,NULL,worker,NULL))started=true;
 }
 void covers_request(const Game *game) {
     if(!started)return;pthread_mutex_lock(&mutex);Slot *slot=NULL;
@@ -73,6 +73,7 @@ void covers_request(const Game *game) {
     snprintf(queue[count++],256,"%s",game->name);pthread_cond_signal(&ready);pthread_mutex_unlock(&mutex);
 }
 void covers_status(char *out,size_t cap){pthread_mutex_lock(&mutex);snprintf(out,cap,"%s",state);pthread_mutex_unlock(&mutex);}
+void covers_set_paused(bool value){pthread_mutex_lock(&mutex);paused=value;if(!value)pthread_cond_signal(&ready);pthread_mutex_unlock(&mutex);}
 void covers_refresh(void){pthread_mutex_lock(&mutex);count=0;for(unsigned i=0;i<8;i++){free(slots[i].pixels);slots[i]=(Slot){0};}pthread_mutex_unlock(&mutex);}
 void covers_draw(const Game *game,int x,int y,int w,int h) {
     pthread_mutex_lock(&mutex);Slot *slot=NULL;for(unsigned i=0;i<8;i++)if(!strcmp(slots[i].name,game->name)&&slots[i].pixels){slot=&slots[i];break;}

@@ -11,7 +11,7 @@ clang -std=c99 -O2 -fno-strict-aliasing -Ivendor/parallel-n64/mupen64plus-core/s
 cp build/native-jit/parallel_n64.a "$dir/core.a"
 llvm-ar r "$dir/core.a" "$dir/rdp_emit_bridge.o" "$dir/n64video.o"
 python3 scripts/compile_hle_probe.py
-clang -DDYNAREC -DNEW_DYNAREC=2 -D_M_X64 -DARCH_MIN_SSE2 -DNPS64_HLE_GAME -std=c11 -D_POSIX_C_SOURCE=200809L -D__LIBRETRO__ -DDATA_ROOT='"/work/build/benchdata"' -Wall -Wextra -Werror -O2 -Isrc -Ivendor/parallel-n64/libretro-common/include -Ivendor/parallel-n64/mupen64plus-core/src -Ivendor/parallel-n64/include -Ivendor/parallel-n64/mupen64plus-video-angrylion src/frontend.c src/storage.c src/log.c src/hle_game_geometry.c src/hle_game_material.c src/hle_display_list.c src/gpu_hle_probe.c tests/platform_bench.c "$dir/core.a" -lvulkan -lm -lpthread -o "$dir/frontend"
+clang -DDYNAREC -DNEW_DYNAREC=2 -D_M_X64 -DARCH_MIN_SSE2 -DNPS64_HLE_GAME -std=c11 -D_POSIX_C_SOURCE=200809L -D__LIBRETRO__ -DDATA_ROOT='"/work/build/benchdata"' -Wall -Wextra -Werror -O2 -Isrc -Ivendor/parallel-n64/libretro-common/include -Ivendor/parallel-n64/mupen64plus-core/src -Ivendor/parallel-n64/include -Ivendor/parallel-n64/mupen64plus-video-angrylion src/frontend.c src/settings.c src/storage.c src/log.c src/hle_game_geometry.c src/hle_game_material.c src/hle_display_list.c src/gpu_hle_probe.c tests/platform_bench.c "$dir/core.a" -lvulkan -lm -lpthread -o "$dir/frontend"
 ln -sf "$(realpath "$rom")" build/benchdata/games/benchmark.z64
 : > build/benchdata/nps64.log
 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation BENCH_HLE_PREVIEW=1 BENCH_FRAMES=${BENCH_FRAMES:-330} BENCH_CPU=jit timeout 180 "$dir/frontend" > "$dir/host.log" 2>&1

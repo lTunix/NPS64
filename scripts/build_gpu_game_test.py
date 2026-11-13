@@ -49,11 +49,11 @@ for filename,digest in manifest['library_members'].items():
 libraries=[Path(x) for x in json.loads((gpu/'libraries.json').read_text())]
 libraries=[probe/'libamd_common.a' if x.name=='libamd_common.a' else x for x in libraries]
 objects=[]
-for unit in ['frontend','gpu_vulkan','gpu_pipeline_guard','gpu_compile_worker','gpu_api_trace','gpu_cache_store','gpu_recipes','gpu_crashlog','sha256','gpu_boot','platform_ps4','storage','runtime_ps4','log']:
+for unit in ['settings','library_ui','covers','cover_match','update_http_ps4','frontend','gpu_vulkan','gpu_pipeline_guard','gpu_compile_worker','gpu_api_trace','gpu_cache_store','gpu_recipes','gpu_crashlog','sha256','gpu_boot','platform_ps4','storage','runtime_ps4','log']:
     obj=build/(unit+'.o')
     stack_check=['-Wframe-larger-than=4096','-fstack-usage'] if unit in {'gpu_pipeline_guard','gpu_compile_worker','gpu_cache_store','gpu_recipes','gpu_crashlog','sha256'} else []
-    run([build/'cc','-DNPS64_GPU','-DNPS64_GPU_GAME_TEST','-std=c11','-O2','-Wall','-Wextra','-Werror',
-         *stack_check,
+    run([build/'cc','-DNPS64_GPU','-DNPS64_GPU_GAME_TEST','-DNPS64_HD_UI','-DNPS64_UI_VERSION="00.14"','-std=c11','-O2','-Wall','-Wextra','-Werror',
+         *stack_check,*(['-Wno-unused-function'] if unit=='covers' else []),
          '-I'+str(ROOT/'src'),'-I'+str(core/'libretro-common/include'),
          '-I'+str(core/'mupen64plus-core/src/api'),
          '-I'+str(core/'mupen64plus-video-paraLLEl/parallel-rdp/vulkan-headers/include'),
@@ -65,5 +65,5 @@ run([work/'llvm/usr/bin/ld.lld-18','-m','elf_x86_64','-pie','-z','max-page-size=
      '-L'+str(sdk/'lib'),sdk/'lib/crt1.o',*objects,'--start-group',core/'parallel_n64.a',
      '--whole-archive',*libraries,'--no-whole-archive','-lc++','-lc++abi','-lunwind','-lc','-lm','-lkernel',
      '-lSceLibcInternal','-lSceGnmDriver','-lSceVideoOut','-lScePad','-lSceUserService','-lSceAudioOut',
-     '-lSceSystemService','-lSceSysmodule','--end-group','-o',build/'nps64.elf'])
+     '-lSceNet','-lSceSsl','-lSceHttp','-lSceSystemService','-lSceSysmodule','--end-group','-o',build/'nps64.elf'])
 run(['python3',ROOT/'scripts/package_gpu_game_test.py','--reference-work',work,'--sdk',sdk])

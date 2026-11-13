@@ -15,7 +15,7 @@ int main(void) {
         {0x0100,BTN_UPDATE,1u<<12}, {0x0400,BTN_PREV,1u<<10},
         {0x0800,BTN_NEXT,1u<<11}, {0x0010,BTN_UP,1u<<4},
         {0x0040,BTN_DOWN,1u<<5}, {0x0080,BTN_LEFT,1u<<6},
-        {0x0020,BTN_RIGHT,1u<<7},
+        {0x0020,BTN_RIGHT,1u<<7}, {0x0200,BTN_GAME_SETTINGS,0},
     };
     for(size_t i=0;i<sizeof(cases)/sizeof(cases[0]);i++) {
         p.buttons=cases[i].raw; Input in=input_ps4_decode(&p);
@@ -26,6 +26,7 @@ int main(void) {
     Input in=input_ps4_decode(&p);
     assert(in.buttons==BTN_UPDATE);
     assert(in.lx==-32768 && in.ry==32766 && in.joy==(1u<<12));
+    p.analogButtons.l2=0;p.analogButtons.r2=101;in=input_ps4_decode(&p);assert(in.buttons==BTN_GAME_SETTINGS);
     p.connected=0; in=input_ps4_decode(&p);
     assert(!in.connected && !in.buttons && !in.joy && !in.raw_buttons);
     puts("PASS: ScePad face buttons, menu/N64 actions, chords, axes and disconnect");
