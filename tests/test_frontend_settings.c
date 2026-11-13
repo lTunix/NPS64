@@ -36,7 +36,7 @@ void platform_poll(Input p[4]){
  case 24:assert(paused);p[0].buttons=BTN_DOWN;break;
  case 26: p[0].buttons=BTN_DOWN;break;
  case 28: p[0].buttons=BTN_DOWN;break;
- case 30:assert(pause_selected==3);p[0].buttons=BTN_CONFIRM;break;
+ case 30:screenshot("build/settings-pause.ppm");assert(pause_selected==3);p[0].buttons=BTN_CONFIRM;break;
  case 32:assert(!widescreen);p[0].buttons=BTN_DOWN;break;
  case 34:p[0].buttons=BTN_CONFIRM;break;
  case 36:assert(!running&&!covers_paused);p[0].buttons=BTN_GAME_SETTINGS;break;

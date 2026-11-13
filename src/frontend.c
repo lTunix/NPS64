@@ -749,7 +749,7 @@ static void pause_draw(void) {
     rect(275,95,730,510,0xff101e30); rect(275,95,730,5,accent[theme]);
     platform_text(320,128,"PAUSA",accent[theme],3);
 #endif
-    const char *labels[]={"Continuar","Guardar estado","Cargar estado",widescreen?"Aspecto del juego: 16:9":"Aspecto del juego: 4:3","Volver a biblioteca",filtered_vi?"Imagen: precisa (X: rapida)":"Imagen: rapida (X: precisa)"
+    const char *labels[]={"Continuar","Guardar estado","Cargar estado",widescreen?"Aspecto del juego: 16:9":"Aspecto del juego: 4:3","Volver a biblioteca",filtered_vi?"Filtro VI: preciso":"Filtro VI: rapido"
 #ifdef NPS64_UPDATES
         ,"Buscar actualizaciones"
 #endif
@@ -784,8 +784,8 @@ int main(void) {
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
 #ifdef NPS64_GPU_GAME_TEST
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.14.log");
-    nps64_log("NPS64 Vulkan Game Test 00.14; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.15.log");
+    nps64_log("NPS64 Vulkan Game Test 00.15; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
@@ -796,9 +796,9 @@ int main(void) {
 #elif defined(NPS64_GPU_EXPERIMENTAL)
     nps64_log("NPS64 00.19 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.14 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.15 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.14 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.15 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
@@ -865,7 +865,7 @@ int main(void) {
     retro_set_audio_sample(audio_sample); retro_set_audio_sample_batch(audio_batch);
     retro_set_input_poll(input_poll); retro_set_input_state(input_state);
     game_count=library_scan(games_dir,games,512);
-    snprintf(message,sizeof(message),"%zu ROMs encontradas. X: abrir | Cuadrado: actualizar",game_count);
+    snprintf(message,sizeof(message),"%zu ROMs encontradas. Selecciona un juego",game_count);
     nps64_log("[library] startup count=%zu\n",game_count);
 #ifdef NPS64_UPDATES
     nps64_updater_init();
@@ -951,7 +951,7 @@ int main(void) {
                 covers_refresh();
 #endif
                 game_count=library_scan(games_dir,games,512); selected=0;
-                char text[160]; snprintf(text,sizeof(text),"Biblioteca actualizada: %zu ROMs. Pulsa X para abrir",game_count); notify(text);
+                char text[160]; snprintf(text,sizeof(text),"Biblioteca actualizada: %zu ROMs. Selecciona un juego",game_count); notify(text);
             }
 
             if((pressed&BTN_CONFIRM) && game_count) start_game();
