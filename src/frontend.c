@@ -238,6 +238,9 @@ static void video_refresh(const void *data,unsigned width,unsigned height,size_t
 void nps64_hle_cpu_video(const void *data,unsigned width,unsigned height,size_t pitch){video_refresh(data,width,height,pitch);}
 #endif
 #include "software_scaler.h"
+#ifdef NPS64_IMAGE_SMOOTH_TEST
+#include "bilinear_scaler.h"
+#endif
 static void game_video_draw(void) {
     uint32_t *out=platform_framebuffer();
     if(!native_width || !native_height) {memset(out,0,SCREEN_W*SCREEN_H*4);return;}
@@ -261,8 +264,20 @@ static void game_video_draw(void) {
 #ifndef __ORBIS__
     if(getenv("NPS64_CPU_SCALAR"))vector_scaler=0;
 #endif
+    bool smoothed=false;
+#ifdef NPS64_IMAGE_SMOOTH_TEST
+    if(filtered_vi && bytes==4 && width<=dw && height<=dh) {
+        static Nps64BilinearScaler smooth;
+        for(unsigned y=0;y<dh;y++) {
+            uint32_t *row=out+(y+top)*SCREEN_W;
+            for(unsigned x=0;x<left;x++)row[x]=0xff000000;
+            for(unsigned x=left+dw;x<SCREEN_W;x++)row[x]=0xff000000;
+        }
+        smoothed=nps64_scale_bilinear32(&smooth,out+top*SCREEN_W+left,SCREEN_W,data,pitch,width,height,dw,dh,native_rgba)!=0;
+    }
+#endif
     unsigned previous_sy=~0u;
-    for(unsigned y=0;y<dh;y++) {
+    for(unsigned y=0;!smoothed && y<dh;y++) {
         unsigned sy=y*height/dh;
         uint32_t *dst=out+(y+top)*SCREEN_W+left;
         if(left) {
@@ -807,8 +822,8 @@ int main(void) {
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
 #ifdef NPS64_GPU_GAME_TEST
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.22.log");
-    nps64_log("NPS64 Vulkan Game Test 00.22; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.23.log");
+    nps64_log("NPS64 Vulkan Game Test 00.23; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
@@ -817,11 +832,11 @@ int main(void) {
 #elif defined(NPS64_HLE_GAME)
     nps64_log("NPS64 00.38 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
-    nps64_log("NPS64 00.22 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
+    nps64_log("NPS64 00.23 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.22 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.23 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.22 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.23 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
