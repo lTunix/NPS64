@@ -130,11 +130,13 @@ static void audio_quality_prepare(void) {
     double started=platform_time();
     bool enabled=resample_hq_enabled()!=0;
     bool ready=enabled && resample_hq_taps_capped(0x10000,0,16) && resample_hq_taps(0x10000,0);
-    nps64_log("[audio-quality] enhanced_hle=%u taps=32 banks_ready=%u prepare_ms=%.3f source=voice_sinc output=sinc32\n",resample_hq_enabled()!=0,ready,(platform_time()-started)*1000);
+    nps64_log("[audio-quality] enhanced_hle=%u taps=%u banks_ready=%u prepare_ms=%.3f source=%s output=sinc32\n",resample_hq_enabled()!=0,enabled?32u:0u,ready,(platform_time()-started)*1000,enabled?"voice_sinc":"microcode");
 }
 #endif
 static const char *override(const char *key) {
-#ifdef NPS64_AUDIO_HQ_TEST
+#ifdef NPS64_AUDIO_CLEAN_TEST
+    if(!strcmp(key,"parallel-n64-enhanced-hle-audio"))return "disabled";
+#elif defined(NPS64_AUDIO_HQ_TEST)
     if(!strcmp(key,"parallel-n64-enhanced-hle-audio"))return diagnostic_hle?"enabled":"disabled";
     if(!strcmp(key,"parallel-n64-enhanced-hle-audio-quality"))return "32";
 #endif
@@ -805,8 +807,8 @@ int main(void) {
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
 #ifdef NPS64_GPU_GAME_TEST
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.21.log");
-    nps64_log("NPS64 Vulkan Game Test 00.21; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.22.log");
+    nps64_log("NPS64 Vulkan Game Test 00.22; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
@@ -815,11 +817,11 @@ int main(void) {
 #elif defined(NPS64_HLE_GAME)
     nps64_log("NPS64 00.38 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
-    nps64_log("NPS64 00.21 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
+    nps64_log("NPS64 00.22 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.21 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.22 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.21 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.22 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
