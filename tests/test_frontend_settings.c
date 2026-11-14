@@ -32,14 +32,14 @@ void platform_poll(Input p[4]){
  case 17:assert(settings_page==2&&!editing_game.widescreen);p[0].buttons=BTN_BACK;break;
  case 19:p[0].buttons=BTN_UP;break;
  case 21:p[0].buttons=BTN_CONFIRM;break;
- case 22:assert(running&&widescreen&&covers_paused);p[0].buttons=BTN_PAUSE;break;
+ case 22:assert(running&&widescreen&&covers_paused&&ram_writes_allowed);p[0].buttons=BTN_PAUSE;break;
  case 24:assert(paused);p[0].buttons=BTN_DOWN;break;
  case 26: p[0].buttons=BTN_DOWN;break;
  case 28: p[0].buttons=BTN_DOWN;break;
  case 30:screenshot("build/settings-pause.ppm");assert(pause_selected==3);p[0].buttons=BTN_CONFIRM;break;
  case 32:assert(!widescreen);p[0].buttons=BTN_DOWN;break;
  case 34:p[0].buttons=BTN_CONFIRM;break;
- case 36:assert(!running&&!covers_paused);p[0].buttons=BTN_GAME_SETTINGS;break;
+ case 36:assert(!running&&!covers_paused);assert(!strncmp(message,"Partida guardada",16));p[0].buttons=BTN_GAME_SETTINGS;break;
  case 38:assert(!editing_game.widescreen);p[0].buttons=BTN_BACK;break;
  case 40:p[0].buttons=BTN_LEFT;break;
  case 42:assert(sidebar_focus);p[0].buttons=BTN_DOWN;break;

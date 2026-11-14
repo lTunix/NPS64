@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <errno.h>
 
 static uint32_t checksum(const unsigned char *p,size_t n) {
     uint32_t h=2166136261u;
@@ -73,10 +74,22 @@ bool file_write_atomic(const char *path,const void *data,size_t size) {
     if(ok && rename(tmp,path)==0) return true;
     unlink(tmp); return false;
 }
+/* Validate bytes from the stream. PS4 libc stat size can differ from its
+ * kernel ABI; metadata must not reject an otherwise readable save. */
+static bool stream_read_exact(FILE *f,void *data,size_t size) {
+    if(fread(data,1,size,f)!=size || ferror(f))return false;
+    return fgetc(f)==EOF && !ferror(f);
+}
 bool file_read_exact(const char *path,void *data,size_t size) {
-    struct stat st; if(stat(path,&st) || (uint64_t)st.st_size!=size) return false;
-    FILE *f=fopen(path,"rb"); if(!f) return false;
-    bool ok=fread(data,1,size,f)==size; fclose(f); return ok;
+    FILE *f=fopen(path,"rb");if(!f)return false;
+    bool ok=stream_read_exact(f,data,size);if(fclose(f))ok=false;return ok;
+}
+Nps64SaveRead save_ram_load(const char *path,void *data,size_t size) {
+    FILE *f=fopen(path,"rb");if(!f)return errno==ENOENT?NPS64_SAVE_MISSING:NPS64_SAVE_INVALID;
+    void *copy=malloc(size?size:1);bool ok=copy && stream_read_exact(f,copy,size);
+    if(fclose(f))ok=false;
+    if(ok)memcpy(data,copy,size);
+    free(copy);return ok?NPS64_SAVE_LOADED:NPS64_SAVE_INVALID;
 }
 /* Header binds the state to this core revision, ROM and exact payload size. */
 typedef struct { char magic[8],core[41],key[40]; uint64_t size; uint32_t hash; } StateHeader;

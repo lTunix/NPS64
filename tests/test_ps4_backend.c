@@ -168,8 +168,8 @@ int32_t sceAudioOutOutput(int32_t h,const void *p) {
     if(audio_pending)usleep(21333);
     memcpy(audio_snapshot,p,sizeof(audio_snapshot));audio_pending=p;
     const int16_t *samples=p;
-    for(unsigned j=0;j<1024;j++)assert((samples[j*2]==0 && samples[j*2+1]==0) ||
-                                      (samples[j*2]==1000 && samples[j*2+1]==-2000));
+    for(unsigned j=0;j<1024;j++)assert(samples[j*2]>=0 && samples[j*2]<=1000 &&
+                                      abs(samples[j*2+1]+2*samples[j*2])<=2); /* Includes smooth start/stop ramps. */
     if(samples[0])audio_nonzero++;
     __atomic_add_fetch(&audio_submits,1,__ATOMIC_RELEASE);return 0;
 }

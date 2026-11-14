@@ -30,10 +30,11 @@ int main(int argc,char **argv) {
         assert(!nps64_rom_compat(rom,0x1000000,wrong));
         assert(!memcmp(reference,rom,0x1000000));
         assert(nps64_rom_compat(rom,0x1000000,digest));
-        assert(nps64_rom_be32(rom+16)==0x639f3ad5 &&
-               nps64_rom_be32(rom+20)==0xa394cb4f);
+        assert(nps64_rom_be32(rom+0x1070)==0);
+        uint32_t fixed_crc[2];assert(nps64_rom_crc6102(rom,0x1000000,fixed_crc));
+        assert(nps64_rom_be32(rom+16)==fixed_crc[0]&&nps64_rom_be32(rom+20)==fixed_crc[1]);
         for(size_t i=0;i<0x1000000;i++)
-            if(i<16 || i>=24)assert(rom[i]==reference[i]);
+            if((i<16 || i>=24) && (i<0x1070 || i>=0x1074))assert(rom[i]==reference[i]);
         assert(!nps64_rom_compat(rom,0x1000000,digest)); /* already fixed */
         free(reference);
     }

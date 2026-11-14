@@ -3,6 +3,7 @@
 #include "log.h"
 #include "scanout_copy.h"
 #include "audio_queue.h"
+#include "audio_stretch.h"
 #include "audio_resampler.h"
 #include <orbis/libkernel.h>
 #include <orbis/VideoOut.h>
@@ -65,6 +66,8 @@ static unsigned char font[128*8*16];
 static Nps64AudioQueue audio_queue;
 static int audio_stop,audio_failed,audio_priority_result,audio_output_error;
 static unsigned audio_blocks;
+static Nps64AudioStretch audio_stretch={.tempo=1};
+static unsigned audio_tempo_ppm=1000000;
 static pthread_t audio_thread;
 static bool audio_thread_started;
 static Nps64AudioResampler audio_resampler;
@@ -106,7 +109,8 @@ static void *audio_worker(void *unused) {
     /* AudioOut paces on the previous buffer. Prepare the other buffer while
        playback continues; NULL is a drain, reserved for shutdown. */
     while(!__atomic_load_n(&audio_stop,__ATOMIC_ACQUIRE)) {
-        nps64_audio_take(&audio_queue,blocks[current]);
+        nps64_audio_take_smooth(&audio_queue,&audio_stretch,blocks[current]);
+        __atomic_store_n(&audio_tempo_ppm,(unsigned)(audio_stretch.tempo*1000000),__ATOMIC_RELAXED);
         int result=sceAudioOutOutput(audio,blocks[current]);
         if(result<0) {
             __atomic_store_n(&audio_output_error,result,__ATOMIC_RELAXED);
@@ -320,9 +324,9 @@ void platform_audio(const int16_t *samples,size_t frames,double rate) {
         previous_blocks=blocks;previous_report=now;
         unsigned rd=__atomic_load_n(&audio_queue.read,__ATOMIC_ACQUIRE);
         unsigned wr=__atomic_load_n(&audio_queue.write,__ATOMIC_ACQUIRE);
-        nps64_log("[audio] queued_ms=%.1f underruns=%u dropped=%u block=1024 prefill=5760 resampler=sinc32 input_hz=%.3f output_hz=%.1f priority_result=%d protocol=pipelined\n",
+        nps64_log("[audio] queued_ms=%.1f underruns=%u dropped=%u block=1024 prefill=5760 resampler=sinc32 input_hz=%.3f output_hz=%.1f priority_result=%d protocol=pipelined stretch=wsola tempo=%.5f\n",
                    (wr-rd)/48.0,__atomic_load_n(&audio_queue.underruns,__ATOMIC_RELAXED),
-                   __atomic_load_n(&audio_queue.dropped,__ATOMIC_RELAXED),audio_resampler.rate,output_hz,__atomic_load_n(&audio_priority_result,__ATOMIC_ACQUIRE));
+                   __atomic_load_n(&audio_queue.dropped,__ATOMIC_RELAXED),audio_resampler.rate,output_hz,__atomic_load_n(&audio_priority_result,__ATOMIC_ACQUIRE),__atomic_load_n(&audio_tempo_ppm,__ATOMIC_RELAXED)/1000000.0);
     }
 }
 void platform_audio_clear(void) {

@@ -602,8 +602,9 @@ static bool start_game(void) {
     for(unsigned i=0;i<4;i++) retro_set_controller_port_device(i,pads[i].connected?RETRO_DEVICE_JOYPAD:RETRO_DEVICE_NONE);
     size_t n=retro_get_memory_size(RETRO_MEMORY_SAVE_RAM); void *p=retro_get_memory_data(RETRO_MEMORY_SAVE_RAM);
     char path[PATH_CAP]; save_path(path,".srm");
-    struct stat st;
-    bool bad_save=p && n && stat(path,&st)==0 && !file_read_exact(path,p,n);
+    Nps64SaveRead save_status=p && n?save_ram_load(path,p,n):NPS64_SAVE_MISSING;
+    bool bad_save=save_status==NPS64_SAVE_INVALID;
+    nps64_log("[sram] load status=%s expected_bytes=%zu path=%s\n",bad_save?"invalid":save_status==NPS64_SAVE_LOADED?"loaded":"new",n,path);
     if(bad_save) ram_writes_allowed=false;
 #ifdef NPS64_HD_UI
     covers_set_paused(true);
@@ -614,7 +615,7 @@ static bool start_game(void) {
     game_test_started=platform_time();game_test_limit_reached=false;
     nps64_log("[gpu-test] session wall_limit_s=%.3f includes_manual_pause=1\n",game_test_wall_limit);
 #endif
-    notify(bad_save?"SRAM ilegible: archivo protegido. Respaldalo y retiralo via FTP":"L3 + R3: pausa / estados / volver a biblioteca"); return true;
+    notify(bad_save?"Partida no cargada; original conservado. Revisa el registro":"L3 + R3: pausa / estados / volver a biblioteca"); return true;
 }
 static void stop_game(void) {
 #ifdef NPS64_GPU_GAME_TEST
@@ -629,7 +630,8 @@ static void stop_game(void) {
     hle_gpu_frames=hle_cpu_fallbacks=hle_repeated_frames=hle_incomplete_frames=0;
 #endif
     platform_rumble_clear();
-    save_ram(); retro_unload_game(); nps64_gpu_destroy_context(); retro_deinit(); nps64_gpu_close();use_gpu=false; running=false; paused=false; platform_audio_clear();
+    bool saved=save_ram(); retro_unload_game(); nps64_gpu_destroy_context(); retro_deinit(); nps64_gpu_close();use_gpu=false; running=false; paused=false; platform_audio_clear();
+    notify(!ram_writes_allowed?"Partida original conservada: revisa el registro":saved?"Partida guardada. Selecciona otro juego":"No se pudo guardar la partida. Revisa espacio en /data");
     apply_game_settings(&preferences.defaults);
 #ifdef NPS64_HD_UI
     covers_set_paused(false);
@@ -784,8 +786,8 @@ int main(void) {
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
 #ifdef NPS64_GPU_GAME_TEST
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.15.log");
-    nps64_log("NPS64 Vulkan Game Test 00.15; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.17.log");
+    nps64_log("NPS64 Vulkan Game Test 00.17; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
@@ -796,9 +798,9 @@ int main(void) {
 #elif defined(NPS64_GPU_EXPERIMENTAL)
     nps64_log("NPS64 00.19 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.15 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.17 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.15 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.17 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");

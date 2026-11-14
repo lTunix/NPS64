@@ -35,6 +35,13 @@ static inline int nps64_rom_compat(uint8_t *rom,size_t size,const uint8_t digest
     uint32_t crc[2];
     if(!nps64_rom_crc6102(rom,size,crc) ||
        crc[0]!=0x639f3ad5 || crc[1]!=0xa394cb4f)return 0;
+    /* This verified VC build inserts an emulator-only marker between the
+     * bootstrap timer read and its jump into the decompressed program.
+     * Native R4300 treats it as reserved. Keep the instruction slot as NOP;
+     * the Vulkan boot ordering fix is also required for its first FULLSYNC. */
+    if(nps64_rom_be32(rom+0x1070)!=0x7c000000)return 0;
+    nps64_rom_put32(rom+0x1070,0);
+    nps64_rom_crc6102(rom,size,crc);
     nps64_rom_put32(rom+16,crc[0]);nps64_rom_put32(rom+20,crc[1]);
     return 1;
 }
