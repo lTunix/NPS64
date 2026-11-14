@@ -28,6 +28,23 @@ static inline uint32_t nps64_smooth_lerp(uint32_t a,uint32_t b,unsigned f){
  * 42/256, 128/256 and 213/256. This is exactly the generic centered map
  * for 1280 -> 960 (and other 4:3 reductions); avoid scalar gathers. */
 static inline __m128i nps64_smooth_four_to_three(__m128i input,int rgba){
+#if defined(__SSSE3__)
+ /* Edge phases are differences with coefficients 42 and 43. Each signed
+  * dot product fits [-10965,10965], so PMADDUBSW cannot saturate. Add it
+  * modulo 16 bits to the unsigned base, then round exactly as Q8 lerp. */
+ __m128i zero=_mm_setzero_si128();
+ __m128i base=_mm_shuffle_epi32(input,_MM_SHUFFLE(3,3,3,0));
+ __m128i neighbor=_mm_shuffle_epi32(input,_MM_SHUFFLE(2,2,2,1));
+ __m128i delta=_mm_maddubs_epi16(_mm_unpacklo_epi8(base,neighbor),_mm_setr_epi8(-42,42,-42,42,-42,42,-42,42,-43,43,-43,43,-43,43,-43,43));
+ __m128i value=_mm_add_epi16(_mm_slli_epi16(_mm_unpacklo_epi8(base,zero),8),delta);
+ value=_mm_srli_epi16(_mm_add_epi16(value,_mm_set1_epi16(128)),8);
+ __m128i edges=_mm_packus_epi16(value,zero);
+ __m128i out=_mm_shuffle_epi32(edges,_MM_SHUFFLE(0,1,0,0));
+ __m128i middle=_mm_avg_epu8(input,_mm_srli_si128(input,4));
+ out=_mm_or_si128(_mm_and_si128(out,_mm_set_epi32(-1,-1,0,-1)),_mm_and_si128(middle,_mm_set_epi32(0,0,-1,0)));
+ return nps64_rgba_to_argb(out,rgba);
+#else
+
  const __m128i zero=_mm_setzero_si128(),full=_mm_set1_epi16(256),round=_mm_set1_epi16(128);
  __m128i right=_mm_shuffle_epi32(input,_MM_SHUFFLE(3,3,2,1));
  __m128i low_weight=_mm_set_epi16(128,128,128,128,42,42,42,42);
@@ -36,6 +53,7 @@ static inline __m128i nps64_smooth_four_to_three(__m128i input,int rgba){
  __m128i hi=_mm_add_epi16(_mm_mullo_epi16(_mm_unpackhi_epi8(input,zero),_mm_sub_epi16(full,high_weight)),_mm_mullo_epi16(_mm_unpackhi_epi8(right,zero),high_weight));
  lo=_mm_srli_epi16(_mm_add_epi16(lo,round),8);hi=_mm_srli_epi16(_mm_add_epi16(hi,round),8);
  return nps64_rgba_to_argb(_mm_packus_epi16(lo,hi),rgba);
+#endif
 }
 #endif
 static __attribute__((noinline)) void nps64_smooth_row(Nps64BilinearScaler *s,uint32_t *dst,const unsigned char *src,unsigned width,unsigned output,int rgba){

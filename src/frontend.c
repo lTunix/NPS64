@@ -1,6 +1,7 @@
 /* NPS64 PS4 frontend. SPDX-License-Identifier: GPL-2.0-or-later */
 #include "platform.h"
 #include "storage.h"
+#include "save_cache.h"
 #include "settings.h"
 #include "log.h"
 #include "gpu.h"
@@ -11,6 +12,7 @@
 #include "cpu_game_profile.h"
 #include "frame_pacing.h"
 #include "frame_stats.h"
+#include "cadence_stats.h"
 #include "version.h"
 #include <errno.h>
 #ifdef NPS64_HD_UI
@@ -92,6 +94,7 @@ static unsigned requested_gpu=1;
 static unsigned requested_cpu=1; /* 0 cached interpreter, 1 checked Ari64 JIT */
 extern int nps64_core_jit_supported(void);
 extern unsigned nps64_core_workers(void);
+extern void nps64_parallel_perf_take(double *,double *,double *,unsigned *) __attribute__((weak));
 extern void nps64_core_perf_take(double *,double *);
 extern void nps64_core_game_profile(unsigned) __attribute__((weak));
 double nps64_profile_time(void) { return platform_time(); }
@@ -104,6 +107,8 @@ static bool crash_capture_ready;
 static double ui_fps,perf_poll_ms,perf_core_ms,perf_draw_ms,perf_flip_ms;
 static double perf_rdp_ms,perf_vi_ms,perf_gpu_ms;
 static bool ram_writes_allowed=true;
+static Nps64SaveCache sram_cache;
+static bool sram_wrote;
 static enum retro_pixel_format pixel_format=RETRO_PIXEL_FORMAT_0RGB1555;
 static struct retro_system_av_info av;
 static char message[160]="Bienvenido. Copia tus ROMs en /data/NPS64/games";
@@ -565,11 +570,19 @@ static size_t audio_batch(const int16_t *data,size_t frames) {
 static void audio_sample(int16_t l,int16_t r) { int16_t samples[2]={l,r}; audio_batch(samples,1); }
 static void save_path(char path[PATH_CAP],const char *suffix) { snprintf(path,PATH_CAP,"%s/%s%s",saves_dir,current.key,suffix); }
 static bool save_ram(void) {
+    sram_wrote=false;
     if(!ram_writes_allowed) return false;
     size_t n=retro_get_memory_size(RETRO_MEMORY_SAVE_RAM); void *p=retro_get_memory_data(RETRO_MEMORY_SAVE_RAM);
     if(!p || !n) return true;
     char path[PATH_CAP]; save_path(path,".srm");
-    bool ok=file_write_atomic(path,p,n); if(!ok) notify("ERROR al guardar partida; revisa espacio en /data"); return ok;
+    /* Verify existence before skipping: FTP deletion must not turn a clean
+     * cache into a missing save forever. No file data is rewritten here. */
+    if(nps64_save_cache_equal(&sram_cache,p,n)){
+        FILE *existing=fopen(path,"rb");if(existing){fclose(existing);return true;}
+    }
+    bool ok=file_write_atomic(path,p,n);sram_wrote=ok;
+    if(ok)nps64_save_cache_remember(&sram_cache,p,n);
+    if(!ok) notify("ERROR al guardar partida; revisa espacio en /data"); return ok;
 }
 static void state_action(bool load) {
     size_t n=retro_serialize_size(); if(!n || n>64*1024*1024) { notify("Este nucleo no ofrece un estado valido"); return; }
@@ -609,6 +622,7 @@ static bool start_game(void) {
     nps64_log("[pipeline-cache-policy] raw_binary_restore=0 portable_recipes=0 hybrid_async=1\n");
 
 #endif
+    nps64_save_cache_reset(&sram_cache);
     current=games[selected]; core_shutdown=false; options_dirty=false; ram_writes_allowed=true;
     core_frames=video_frames=0; first_video=false; visible_video=false;native_width=native_height=0;native_borrowed=NULL;game_fps=video_fps=0;
     nps64_log("[load] path=%s name=%s\n",current.path,current.name);
@@ -662,6 +676,7 @@ static bool start_game(void) {
     bool bad_save=save_status==NPS64_SAVE_INVALID;
     nps64_log("[sram] load status=%s expected_bytes=%zu path=%s\n",bad_save?"invalid":save_status==NPS64_SAVE_LOADED?"loaded":"new",n,path);
     if(bad_save) ram_writes_allowed=false;
+    else if(save_status==NPS64_SAVE_LOADED)nps64_save_cache_remember(&sram_cache,p,n);
 #ifdef NPS64_HD_UI
     covers_set_paused(true);
 #endif
@@ -691,6 +706,7 @@ static void stop_game(void) {
 #endif
     platform_rumble_clear();
     bool saved=save_ram(); retro_unload_game(); nps64_gpu_destroy_context(); retro_deinit(); nps64_gpu_close();use_gpu=false; running=false; paused=false; native_borrowed=NULL;native_width=native_height=0;platform_audio_clear();
+    nps64_save_cache_reset(&sram_cache);
     notify(!ram_writes_allowed?"Partida original conservada: revisa el registro":saved?"Partida guardada. Selecciona otro juego":"No se pudo guardar la partida. Revisa espacio en /data");
     apply_game_settings(&preferences.defaults);
 #ifdef NPS64_HD_UI
@@ -840,6 +856,13 @@ static void pause_draw(void) {
     platform_text(320,583,update,accent[theme],1);
 #endif
 }
+static void cadence_report(const Nps64CadenceStats *s,const char *phase){
+    if(!s->frames)return;
+    nps64_log("[cadence] phase=%s source=present_return scope=play_segment frames=%llu slow=%llu slow_pct=%.2f observed_ms=%.3f slow_ms=%.3f excess_ms=%.3f max_ms=%.3f episodes=%llu longest_frames=%llu longest_ms=%.3f active_frames=%llu active_ms=%.3f over_1_5x=%llu over_2x=%llu over50=%llu over100=%llu includes_sleep=1 tolerance_ms=0.5\n",phase,
+      (unsigned long long)s->frames,(unsigned long long)s->slow_frames,100.*s->slow_frames/s->frames,s->observed_ms,s->slow_ms,s->excess_ms,s->max_ms,
+      (unsigned long long)s->episodes,(unsigned long long)s->longest_frames,s->longest_ms,(unsigned long long)s->active_frames,s->active_ms,
+      (unsigned long long)s->over_1_5x,(unsigned long long)s->over_2x,(unsigned long long)s->over50,(unsigned long long)s->over100);
+}
 int main(void) {
 #if defined(__ORBIS__) && defined(NPS64_GPU)
     extern void nps64_boot_trace(const char*);
@@ -849,8 +872,8 @@ int main(void) {
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
 #ifdef NPS64_GPU_GAME_TEST
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.26.log");
-    nps64_log("NPS64 Vulkan Game Test 00.26; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.29.log");
+    nps64_log("NPS64 Vulkan Game Test 00.29; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
@@ -859,11 +882,11 @@ int main(void) {
 #elif defined(NPS64_HLE_GAME)
     nps64_log("NPS64 00.38 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
-    nps64_log("NPS64 00.26 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
+    nps64_log("NPS64 00.29 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.26 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.29 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.26 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.29 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
@@ -940,11 +963,13 @@ int main(void) {
 #endif
     uint32_t previous=0; bool connected[4]={false}; double repeat_at=0,deadline=platform_time();
     double perf_since=platform_time(),poll_sum=0,core_sum=0,draw_sum=0,flip_sum=0,gpu_sum=0;
-    double rdp_sum=0,vi_sum=0,pace_sum=0,pace_overshoot_sum=0;
+    double rdp_sum=0,vi_sum=0,pace_sum=0,pace_overshoot_sum=0,fullsync_sum=0;
+    unsigned fullsync_calls=0;
     unsigned late_frames=0,pace_clamps=0;
     double core_peak=0,rdp_peak=0;
     unsigned perf_samples=0;uint64_t perf_core_frames=core_frames,perf_video_frames=video_frames;bool perf_game=false;
     Nps64FrameStats work_stats={0},core_stats={0};
+    Nps64CadenceStats cadence={0};double previous_present=0;
     while(!quit_requested) {
         double loop_start=platform_time(),core_elapsed=0,gpu_elapsed=0;
         platform_poll(pads); uint32_t held=pads[0].buttons,pressed=held&~previous; previous=held;
@@ -1140,7 +1165,10 @@ int main(void) {
 #endif
                 nps64_hle_geometry_capture_textures(0);
 #endif
-                if(now-last_autosave>30) { save_ram();last_autosave=now; }
+                if(now-last_autosave>30) {
+                    double save_started=platform_time();bool save_ok=save_ram();last_autosave=now;
+                    nps64_log("[autosave] frame=%llu elapsed_ms=%.3f ok=%u wrote=%u\n",(unsigned long long)core_frames,1000*(platform_time()-save_started),save_ok!=0,sram_wrote!=0);
+                }
             }
             if(running) {
 #ifdef NPS64_HLE_GAME
@@ -1166,18 +1194,33 @@ int main(void) {
 present_frame:
         ; bool measuring_game=running && !paused;
         if(perf_game!=measuring_game || core_frames<perf_core_frames || video_frames<perf_video_frames) {
+            cadence_report(&cadence,"play_end");nps64_cadence_reset(&cadence);previous_present=0;
             Nps64GpuPerf discarded;nps64_gpu_perf_take(&discarded);
             nps64_frame_stats_reset(&work_stats);nps64_frame_stats_reset(&core_stats);
-            perf_since=platform_time();poll_sum=core_sum=draw_sum=flip_sum=gpu_sum=0;perf_samples=0;rdp_sum=vi_sum=pace_sum=pace_overshoot_sum=0;late_frames=0;pace_clamps=0;core_peak=rdp_peak=0;
+            perf_since=platform_time();poll_sum=core_sum=draw_sum=flip_sum=gpu_sum=0;perf_samples=0;rdp_sum=vi_sum=pace_sum=pace_overshoot_sum=fullsync_sum=0;fullsync_calls=0;late_frames=0;pace_clamps=0;core_peak=rdp_peak=0;
             perf_core_frames=core_frames;perf_video_frames=video_frames;perf_game=measuring_game;
         }
         double draw_elapsed=platform_time()-draw_start-core_elapsed;
         double flip_start=platform_time();
         if(!platform_present()) { notify("Error presentando imagen"); break; }
+        double presented_at=platform_time();
+        if(measuring_game){
+            if(previous_present>0 && av.timing.fps>1){
+                uint64_t run_frames=cadence.active_frames;
+                double run_ms=cadence.active_ms,run_max=cadence.active_max_ms,run_excess=cadence.active_excess_ms;
+                double interval=presented_at-previous_present;
+                nps64_cadence_add(&cadence,interval,1./av.timing.fps);
+                if(run_frames && !cadence.active_frames && run_ms>=1500./av.timing.fps)
+                    nps64_log("[stutter] first_frame=%llu last_frame=%llu frames=%llu end_s=%.6f duration_ms=%.3f max_ms=%.3f excess_ms=%.3f target_ms=%.3f\n",(unsigned long long)(core_frames-run_frames),(unsigned long long)(core_frames-1),(unsigned long long)run_frames,(cadence.observed_ms-interval*1000)/1000,run_ms,run_max,run_excess,1000./av.timing.fps);
+            }
+            previous_present=presented_at;
+        }
 #ifdef NPS64_HLE_GAME
         if(hle_preview&&!hle_preview_displayed){nps64_log("[hle-game] result screen presented\n");hle_preview_displayed=true;}
 #endif
-        double rdp_time,vi_time;nps64_core_perf_take(&rdp_time,&vi_time);rdp_sum+=rdp_time;vi_sum+=vi_time;
+        double rdp_time,vi_time;nps64_core_perf_take(&rdp_time,&vi_time);
+        if(use_gpu && nps64_parallel_perf_take){double sync;unsigned calls;nps64_parallel_perf_take(&rdp_time,&vi_time,&sync,&calls);fullsync_sum+=sync;fullsync_calls+=calls;}
+        rdp_sum+=rdp_time;vi_sum+=vi_time;
         if(core_elapsed>core_peak)core_peak=core_elapsed;
         if(rdp_time>rdp_peak)rdp_peak=rdp_time;
         gpu_sum+=gpu_elapsed;poll_sum+=poll_elapsed;core_sum+=core_elapsed;draw_sum+=draw_elapsed;flip_sum+=platform_time()-flip_start;perf_samples++;
@@ -1193,6 +1236,8 @@ present_frame:
             perf_rdp_ms=1000*rdp_sum/perf_samples;perf_vi_ms=1000*vi_sum/perf_samples;
             perf_gpu_ms=1000*gpu_sum/perf_samples;perf_draw_ms=1000*draw_sum/perf_samples;perf_flip_ms=1000*flip_sum/perf_samples;
             nps64_log("[perf] state=%s fps=%.2f vi_fps=%.2f video_fps=%.2f target=%.2f speed_pct=%.1f cpu=%s workers=%u requested_workers=%u vi_mode=%s rdp_ms=%.3f vi_ms=%.3f poll_ms=%.3f core_ms=%.3f draw_ms=%.3f flip_ms=%.3f gpu_ms=%.3f pace_ms=%.3f sleep_over_ms=%.3f late=%u frames=%llu video=%d visible=%d\n",running?(paused?"pause":"game"):"library",ui_fps,game_fps,video_fps,av.timing.fps,av.timing.fps>0?100*game_fps/av.timing.fps:0,use_jit?"Ari64":"cached",nps64_core_workers(),diagnostic_workers,filtered_vi?"filtered":"fast",perf_rdp_ms,perf_vi_ms,perf_poll_ms,perf_core_ms,perf_draw_ms,perf_flip_ms,perf_gpu_ms,1000*pace_sum/perf_samples,1000*pace_overshoot_sum/perf_samples,late_frames,(unsigned long long)core_frames,first_video,visible_video);
+            if(use_gpu && nps64_parallel_perf_take)nps64_log("[rdp-times] list_ms=%.3f vi_ms=%.3f fullsync_ms=%.3f fullsync_calls=%u list_includes_fullsync=1 vi_includes_readback=1\n",1000*rdp_sum/perf_samples,1000*vi_sum/perf_samples,1000*fullsync_sum/perf_samples,fullsync_calls);
+            nps64_log("[log-queue] async=%u dropped=%u\n",nps64_log_async()!=0,nps64_log_dropped());
             nps64_log("[pacing] debt_clamps=%u core_peak_ms=%.3f rdp_peak_ms=%.3f\n",pace_clamps,1000*core_peak,1000*rdp_peak);
             Nps64GpuPerf transfer;nps64_gpu_perf_take(&transfer);
             if(transfer.readbacks) {
@@ -1203,11 +1248,12 @@ present_frame:
                     scale*transfer.total_seconds,scale*transfer.snapshot_seconds,
                     scale*(core_sum-transfer.total_seconds-transfer.snapshot_seconds));
             }
+            cadence_report(&cadence,"interval");
             if(work_stats.count) {
                 nps64_log("[frame-times] samples=%u native=%ux%u work_mean_ms=%.3f work_p50_upper_ms=%.3f work_p95_upper_ms=%.3f work_p99_upper_ms=%.3f work_max_ms=%.3f core_p95_upper_ms=%.3f bucket_ms=0.25 excludes_sleep=1\n",work_stats.count,native_width,native_height,work_stats.sum_ms/work_stats.count,nps64_frame_stats_percentile(&work_stats,50),nps64_frame_stats_percentile(&work_stats,95),nps64_frame_stats_percentile(&work_stats,99),work_stats.maximum_ms,nps64_frame_stats_percentile(&core_stats,95));
                 nps64_frame_stats_reset(&work_stats);nps64_frame_stats_reset(&core_stats);
             }
-            perf_since=platform_time();poll_sum=core_sum=draw_sum=flip_sum=gpu_sum=0;perf_samples=0;rdp_sum=vi_sum=pace_sum=pace_overshoot_sum=0;late_frames=0;pace_clamps=0;core_peak=rdp_peak=0;perf_core_frames=core_frames;perf_video_frames=video_frames;
+            perf_since=platform_time();poll_sum=core_sum=draw_sum=flip_sum=gpu_sum=0;perf_samples=0;rdp_sum=vi_sum=pace_sum=pace_overshoot_sum=fullsync_sum=0;fullsync_calls=0;late_frames=0;pace_clamps=0;core_peak=rdp_peak=0;perf_core_frames=core_frames;perf_video_frames=video_frames;
         }
         double period=running && !paused && av.timing.fps>1?1.0/av.timing.fps:1.0/60.0;
         double after=platform_time();
@@ -1226,6 +1272,7 @@ present_frame:
 #ifdef NPS64_HD_UI
     library_ui_shutdown();
 #endif
+    cadence_report(&cadence,"shutdown");
     if(running) stop_game();
 #ifdef NPS64_HLE_GAME
     nps64_hle_renderer_release(hle_renderer);

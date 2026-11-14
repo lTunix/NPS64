@@ -33,6 +33,8 @@ if not args.link_only:
     run(['python3',ROOT/'scripts/patch_vulkan_cache.py',core])
     run(['python3',ROOT/'scripts/patch_vulkan_recipes.py',core])
     run(['python3',ROOT/'scripts/patch_vulkan_async.py',core])
+    run(['python3',ROOT/'scripts/patch_vulkan_perf.py',core])
+    run(['python3',ROOT/'scripts/patch_vulkan_ring.py',core])
     run(['python3',ROOT/'scripts/trace_vulkan_core.py',core])
     shutil.copyfile(ROOT/'src/rom_compat.h',core/'mupen64plus-core/src/main/nps64_rom_compat.h')
     make=['make','-C',core,'platform=unix','ARCH=x86_64','WITH_DYNAREC=x86_64','WANT_HACKTARUX=0',
@@ -53,8 +55,8 @@ objects=[]
 for unit in ['settings','library_ui','covers','cover_match','update_http_ps4','frontend','gpu_vulkan','gpu_pipeline_guard','gpu_compile_worker','gpu_api_trace','gpu_cache_store','gpu_recipes','gpu_crashlog','sha256','gpu_boot','platform_ps4','storage','runtime_ps4','log']:
     obj=build/(unit+'.o')
     stack_check=['-Wframe-larger-than=4096','-fstack-usage'] if unit in {'gpu_pipeline_guard','gpu_compile_worker','gpu_cache_store','gpu_recipes','gpu_crashlog','sha256'} else []
-    run([build/'cc','-DNPS64_GPU','-DNPS64_GPU_GAME_TEST','-DNPS64_AUDIO_BUFFER_TEST','-DNPS64_AUDIO_HQ_TEST','-DNPS64_AUDIO_CLEAN_TEST','-DNPS64_IMAGE_SMOOTH_TEST','-DNPS64_INTERNAL_2X_TEST','-DNPS64_GPU_BORROW_TEST','-DNPS64_AUDIO_DIRECT_TEST','-DNPS64_HD_UI','-DNPS64_UI_VERSION="00.26"','-std=c11','-O2','-Wall','-Wextra','-Werror',
-         *stack_check,*(['-mssse3'] if unit=='frontend' else []),*(['-Wno-unused-function'] if unit=='covers' else []),
+    run([build/'cc','-DNPS64_GPU','-DNPS64_GPU_GAME_TEST','-DNPS64_AUDIO_BUFFER_TEST','-DNPS64_AUDIO_HQ_TEST','-DNPS64_AUDIO_CLEAN_TEST','-DNPS64_IMAGE_SMOOTH_TEST','-DNPS64_INTERNAL_2X_TEST','-DNPS64_GPU_BORROW_TEST','-DNPS64_AUDIO_DIRECT_TEST','-DNPS64_HD_UI','-DNPS64_UI_VERSION="00.29"','-std=c11','-O2','-Wall','-Wextra','-Werror',
+         *stack_check,*(['-DNPS64_LOG_ASYNC'] if unit=='log' else []),*(['-mssse3'] if unit=='frontend' else []),*(['-Wno-unused-function'] if unit=='covers' else []),
          '-I'+str(ROOT/'src'),'-I'+str(core/'libretro-common/include'),
          '-I'+str(core/'mupen64plus-core/src/api'),
          '-I'+str(core/'mupen64plus-video-paraLLEl/parallel-rdp/vulkan-headers/include'),

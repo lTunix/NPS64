@@ -17,6 +17,17 @@ static uint32_t reference(unsigned x,unsigned y,unsigned w,unsigned h,unsigned d
  return v;
 }
 int main(void){
+#if defined(__SSE2__)
+ /* Exhaust both byte endpoints, including the largest signed deltas. */
+ for(unsigned a=0;a<256;a++)for(unsigned b=0;b<256;b++){
+  uint32_t p=a*0x01010101u,q=b*0x01010101u,got[4];
+  __m128i v=nps64_smooth_four_to_three(_mm_set_epi32((int)q,(int)p,(int)q,(int)p),0);
+  _mm_storeu_si128((__m128i*)got,v);
+  assert(got[0]==nps64_smooth_lerp(p,q,42));
+  assert(got[1]==nps64_smooth_lerp(q,p,128));
+  assert(got[2]==nps64_smooth_lerp(p,q,213));
+ }
+#endif
  const unsigned shapes[][4]={{1,1,1,1},{1,3,9,11},{3,1,11,9},{2,2,7,5},{17,11,37,29},{320,240,960,720},{640,480,960,720},{640,480,1280,720},{1280,960,960,720},{1280,576,960,720},{1280,480,960,720},{1280,480,1280,720},{8,3,6,5},{16,7,12,11},{7,3,7,5}};
  for(unsigned t=0;t<sizeof(shapes)/sizeof(shapes[0]);t++)for(int rgba=0;rgba<2;rgba++){
   unsigned w=shapes[t][0],h=shapes[t][1],dw=shapes[t][2],dh=shapes[t][3];

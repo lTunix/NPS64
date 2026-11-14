@@ -3,8 +3,8 @@
 set -euo pipefail
 cd /work
 mkdir -p build/presentation-bench
-git show 2d8aae5:src/bilinear_scaler.h > build/presentation-bench/baseline.h
-clang -std=c11 -O2 -Wall -Wextra -Werror -Isrc -I. -DNPS64_BILINEAR_HEADER='"build/presentation-bench/baseline.h"' tests/bench_bilinear_scaler.c -o build/presentation-bench/baseline
+git show 27e286b:src/bilinear_scaler.h > build/presentation-bench/baseline.h
+clang -mssse3 -std=c11 -O2 -Wall -Wextra -Werror -Isrc -I. -DNPS64_BILINEAR_HEADER='"build/presentation-bench/baseline.h"' tests/bench_bilinear_scaler.c -o build/presentation-bench/baseline
 clang -mssse3 -std=c11 -O2 -Wall -Wextra -Werror -Isrc tests/bench_bilinear_scaler.c -o build/presentation-bench/optimized
 for n in 1 2 3; do
  build/presentation-bench/baseline > "build/presentation-bench/baseline-$n.txt"
