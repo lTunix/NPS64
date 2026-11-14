@@ -7,6 +7,8 @@ bash scripts/test_covers.sh
 bash scripts/test_settings.sh
 bash scripts/test_save_ram.sh
 bash scripts/test_audio_stretch.sh
+bash scripts/test_audio_buffer.sh
+bash scripts/test_audio_voice_quality.sh
 bash scripts/test_frame_pacing.sh
 clang -std=c11 -O2 -g -fsanitize=address,undefined -Wall -Wextra -Werror -Isrc tests/test_frame_stats.c -lm -o build/test-frame-stats
 build/test-frame-stats

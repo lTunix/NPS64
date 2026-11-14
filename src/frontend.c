@@ -122,7 +122,22 @@ static void notify(const char *text) { snprintf(message,sizeof(message),"%s",tex
 static void core_log(enum retro_log_level level,const char *fmt,...) {
     va_list args; va_start(args,fmt); nps64_log("[core:%d] ",level); nps64_vlog(fmt,args); va_end(args);
 }
+#ifdef NPS64_AUDIO_HQ_TEST
+extern int resample_hq_enabled(void);
+extern const int16_t *resample_hq_taps(uint32_t,uint32_t);
+extern const int16_t *resample_hq_taps_capped(uint32_t,uint32_t,int);
+static void audio_quality_prepare(void) {
+    double started=platform_time();
+    bool enabled=resample_hq_enabled()!=0;
+    bool ready=enabled && resample_hq_taps_capped(0x10000,0,16) && resample_hq_taps(0x10000,0);
+    nps64_log("[audio-quality] enhanced_hle=%u taps=32 banks_ready=%u prepare_ms=%.3f source=voice_sinc output=sinc32\n",resample_hq_enabled()!=0,ready,(platform_time()-started)*1000);
+}
+#endif
 static const char *override(const char *key) {
+#ifdef NPS64_AUDIO_HQ_TEST
+    if(!strcmp(key,"parallel-n64-enhanced-hle-audio"))return diagnostic_hle?"enabled":"disabled";
+    if(!strcmp(key,"parallel-n64-enhanced-hle-audio-quality"))return "32";
+#endif
     if(!strcmp(key,"parallel-n64-cpucore")) return use_jit?"dynamic_recompiler_ari64":"cached_interpreter";
     if(!strcmp(key,"parallel-n64-parallel-rdp-synchronous")) return "enabled";
     if(!strcmp(key,"parallel-n64-gfxplugin")) return use_gpu?"parallel":"angrylion";
@@ -609,6 +624,10 @@ static bool start_game(void) {
 #ifdef NPS64_HD_UI
     covers_set_paused(true);
 #endif
+#ifdef NPS64_AUDIO_HQ_TEST
+    /* Build the finite voice-filter banks while the loading screen is up. */
+    audio_quality_prepare();
+#endif
     settings_page=0;sidebar_focus=false;
     running=true; paused=false; last_autosave=platform_time(); platform_audio_clear();
 #ifdef NPS64_GPU_GAME_TEST
@@ -786,8 +805,8 @@ int main(void) {
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
 #ifdef NPS64_GPU_GAME_TEST
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.17.log");
-    nps64_log("NPS64 Vulkan Game Test 00.17; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.21.log");
+    nps64_log("NPS64 Vulkan Game Test 00.21; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
@@ -796,11 +815,11 @@ int main(void) {
 #elif defined(NPS64_HLE_GAME)
     nps64_log("NPS64 00.38 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
-    nps64_log("NPS64 00.19 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
+    nps64_log("NPS64 00.21 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.17 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.21 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.17 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.21 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");

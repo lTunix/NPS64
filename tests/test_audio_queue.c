@@ -39,11 +39,12 @@ int main(void) {
     memset(&q,0,sizeof(q));q.read=q.write=NPS64_AUDIO_CAPACITY-513;
     sequence=expected=0;
     int16_t samples_batch[256*2];
-    for(unsigned k=0;k<24;k++) {
+    unsigned batches=(NPS64_AUDIO_PREFILL+1023)/1024*4;
+    for(unsigned k=0;k<batches;k++) {
         for(unsigned i=0;i<256;i++) {int16_t v=(int16_t)sequence++;samples_batch[i*2]=v;samples_batch[i*2+1]=(int16_t)~v;}
         assert(nps64_audio_push_batch(&q,samples_batch,256)==256);
     }
-    for(unsigned k=0;k<6;k++)take();
+    for(unsigned k=0;k<batches/4;k++)take();
     assert(!q.dropped);
     /* PAL batches every 20 ms with alternating +/- 8 ms delivery jitter.
        Device requests 1024 samples every 21.333 ms, for 20 seconds. */

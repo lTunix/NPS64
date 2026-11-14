@@ -3,7 +3,13 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-enum { NPS64_AUDIO_CAPACITY=8192, NPS64_AUDIO_BLOCK=1024, NPS64_AUDIO_PREFILL=5760 };
+/* 00.18 isolates a larger reserve for the console comparison. Normal builds
+ * retain the checkpoint's buffer sizes; the device output block is identical. */
+#ifdef NPS64_AUDIO_BUFFER_TEST
+enum { NPS64_AUDIO_CAPACITY=16384, NPS64_AUDIO_BLOCK=1024, NPS64_AUDIO_PREFILL=11520, NPS64_AUDIO_TARGET=10240 };
+#else
+enum { NPS64_AUDIO_CAPACITY=8192, NPS64_AUDIO_BLOCK=1024, NPS64_AUDIO_PREFILL=5760, NPS64_AUDIO_TARGET=5120 };
+#endif
 typedef struct {
     int16_t samples[NPS64_AUDIO_CAPACITY*2];
     _Alignas(64) unsigned write;

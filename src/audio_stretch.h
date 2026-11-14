@@ -5,7 +5,7 @@
 /* Keep timing correction in the consumer: video and the emulated DAC keep
  * their original clocks. A fixed analysis hop preserves the average tempo;
  * correlation chooses only the waveform alignment, never the FIFO advance. */
-enum {NPS64_AUDIO_SEARCH=384,NPS64_AUDIO_TARGET=5120};
+enum {NPS64_AUDIO_SEARCH=384};
 typedef struct {
     int16_t tail[NPS64_AUDIO_BLOCK*2],last[2];
     double level,tempo,fraction;

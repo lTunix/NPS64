@@ -12,6 +12,7 @@ def patch_audio(root):
  * ai_hand_over_played() call at the VI boundary returns zero. */
 static size_t nps64_field_frames;
 static uint64_t nps64_field_phase;
+static int64_t nps64_field_credit;
 static unsigned nps64_field_divider;
 ''' + old)
     old = '   current_sample_rate = 0;'
@@ -20,6 +21,7 @@ static unsigned nps64_field_divider;
    current_sample_rate_exact = 0.0;
    nps64_field_frames = 0;
    nps64_field_phase = 0;
+   nps64_field_credit = 0;
    nps64_field_divider = 0;''')
     old = '   emit_frames(audio_acc_frames);\n}'
     assert text.count(old)==1
@@ -27,8 +29,11 @@ static unsigned nps64_field_divider;
    nps64_field_frames = 0;
 }
 
-/* Pad only the missing part of a field. Keep fractional DAC samples so PAL
- * and NTSC do not lose a fraction on every VI and slowly drain the queue. */
+/* Balance the DAC budget across fields: AI_LEN is aligned to two stereo
+ * frames, so a short field can be followed by a longer one. Padding every
+ * individual deficit inserted zeros into otherwise continuous DMA audio.
+ * Allow two frames of delivery quantization; preserve excess as credit.
+ * A real idle field still supplies silence to the frontend clock. */
 void nps64_audio_pad_field(unsigned ticks, unsigned divider)
 {
    uint64_t total;
@@ -38,13 +43,20 @@ void nps64_audio_pad_field(unsigned ticks, unsigned divider)
    if (divider != nps64_field_divider)
    {
       nps64_field_phase = 0;
+      nps64_field_credit = 0;
       nps64_field_divider = divider;
    }
    total = nps64_field_phase + ticks;
    want = (size_t)(total / divider);
    nps64_field_phase = total % divider;
-   if (nps64_field_frames < want)
-      push_audio_silence_via_libretro(want - nps64_field_frames);
+   nps64_field_credit += (int64_t)nps64_field_frames - (int64_t)want;
+   if (nps64_field_credit < 0 &&
+       (nps64_field_credit < -2 || nps64_field_frames == 0))
+   {
+      size_t missing = (size_t)(-nps64_field_credit);
+      push_audio_silence_via_libretro(missing);
+      nps64_field_credit = 0;
+   }
 }''')
     old = '   frames = size >> 2;                   /* 4 bytes per stereo frame */'
     assert text.count(old)==1

@@ -1,5 +1,6 @@
 /* Exercise the actual PS4 backend on Linux with fake kernel/video services. */
 #include "platform.h"
+#include "audio_queue.h"
 #include "log.h"
 #include <orbis/libkernel.h>
 #include <orbis/VideoOut.h>
@@ -251,9 +252,10 @@ int main(void) {
     puts("PASS: Rumble Pak motor mapping, strength, deduplication, stop and reconnect");
     nps64_log("dedicated log %d\n",123);assert(nps64_log_ok());
     if(getenv("TEST_AUDIO")) {
-        int16_t sound[4000*2];for(unsigned i=0;i<4000;i++){sound[i*2]=1000;sound[i*2+1]=-2000;}
+        enum {SOUND_FRAMES=(NPS64_AUDIO_PREFILL*32040+47999)/48000+1024};
+        int16_t sound[SOUND_FRAMES*2];for(unsigned i=0;i<SOUND_FRAMES;i++){sound[i*2]=1000;sound[i*2+1]=-2000;}
         unsigned before=__atomic_load_n(&audio_submits,__ATOMIC_ACQUIRE);
-        platform_audio(sound,4000,32040);
+        platform_audio(sound,SOUND_FRAMES,32040);
         for(unsigned i=0;i<200 && __atomic_load_n(&audio_submits,__ATOMIC_ACQUIRE)<before+16;i++)usleep(10000);
         assert(__atomic_load_n(&audio_submits,__ATOMIC_ACQUIRE)>=before+16);
     }

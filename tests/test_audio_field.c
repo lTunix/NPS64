@@ -46,6 +46,26 @@ int main(void) {
     init_audio_libretro();received=0;
     for(unsigned i=0;i<10;i++)push_audio_samples_via_libretro(source,sizeof(source));
     nps64_audio_pad_field(960*1552,1552);flush_audio_libretro();assert(received==9600);
+    /* AI_LEN quantization alternates short/long fields. Never puncture a
+     * continuous nonzero stream with per-field zero padding. */
+    init_audio_libretro();received=nonzero=0;
+    for(unsigned field=0;field<10000;field++) {
+        unsigned frames=(field&1)?532:534;
+        push_audio_samples_via_libretro(source,frames*4);
+        nps64_audio_pad_field(533*1552,1552);
+        flush_audio_libretro();
+        assert(nonzero==received*2);
+    }
+    assert(received==533*10000);
+    /* Also allow a first short field to borrow its alignment pair. */
+    init_audio_libretro();received=nonzero=0;
+    for(unsigned field=0;field<10000;field++) {
+        unsigned frames=(field&1)?534:532;
+        push_audio_samples_via_libretro(source,frames*4);
+        nps64_audio_pad_field(533*1552,1552);
+        flush_audio_libretro();assert(nonzero==received*2);
+    }
+    assert(received==533*10000);
     deinit_audio_libretro();assert(get_audio_sample_rate_libretro()==32040.0);
     puts("PASS actual audio backend: completed DMA, polls, partial/silent fields, excess, fractional DAC budget, emergency drain and rate reset");
 }
