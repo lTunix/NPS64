@@ -19,9 +19,9 @@
 #endif
 #ifdef NPS64_UPDATES
 #include "updater.h"
-#define PAUSE_CHOICES 9
+#define PAUSE_CHOICES 10
 #else
-#define PAUSE_CHOICES 8
+#define PAUSE_CHOICES 9
 #endif
 #ifdef NPS64_HLE_GAME
 #include "hle_game_geometry.h"
@@ -86,6 +86,7 @@ static unsigned diagnostic_workers=4;
 #endif
 static bool diagnostic_hle=true;
 static bool filtered_vi=true;
+static unsigned resolution_mode=1,resolution_next=1;
 static bool use_jit,use_gpu,native_rgba;
 static unsigned requested_gpu=1;
 static unsigned requested_cpu=1; /* 0 cached interpreter, 1 checked Ari64 JIT */
@@ -107,6 +108,8 @@ static enum retro_pixel_format pixel_format=RETRO_PIXEL_FORMAT_0RGB1555;
 static struct retro_system_av_info av;
 static char message[160]="Bienvenido. Copia tus ROMs en /data/NPS64/games";
 static unsigned char *native_frame;
+static const unsigned char *native_borrowed;
+static const unsigned char *native_video_pixels(void){return native_borrowed?native_borrowed:native_frame;}
 static size_t native_capacity;
 static unsigned native_width,native_height;
 static enum retro_pixel_format native_format;
@@ -147,7 +150,14 @@ static const char *override(const char *key) {
     if(!strcmp(key,"parallel-n64-angrylion-multithread"))  {static char workers[4];if(!diagnostic_workers)return "off";snprintf(workers,sizeof(workers),"%u",diagnostic_workers);return workers;}
     if(!strcmp(key,"parallel-n64-angrylion-vioverlay")) return filtered_vi?"Filtered":"Unfiltered";
     if(!strcmp(key,"parallel-n64-parallel-rdp-vi-aa") || !strcmp(key,"parallel-n64-parallel-rdp-vi-bilinear")) return filtered_vi?"enabled":"disabled";
+#ifdef NPS64_INTERNAL_2X_TEST
+    if(!strcmp(key,"parallel-n64-upscaling"))return use_gpu && resolution_mode?"2x":"1x";
+    if(!strcmp(key,"parallel-n64-parallel-rdp-native-texture-lod"))return "enabled";
+    if(!strcmp(key,"parallel-n64-parallel-rdp-native-tex-rect"))return "enabled";
+    if(!strcmp(key,"parallel-n64-parallel-rdp-downscaling"))return "disable";
+#else
     if(!strcmp(key,"parallel-n64-upscaling")) return "1x";
+#endif
     if(!strncmp(key,"parallel-n64-pak",16) && key[16]>='1' && key[16]<='4' && !key[17])
         return controller_pak==0?"rumble":controller_pak==1?"memory":"none";
     return NULL;
@@ -208,6 +218,9 @@ static int16_t input_state(unsigned port,unsigned device,unsigned index,unsigned
 }
 static void video_refresh(const void *data,unsigned width,unsigned height,size_t pitch) {
     bool hardware=data==RETRO_HW_FRAME_BUFFER_VALID;
+#ifdef NPS64_GPU_BORROW_TEST
+    if(hardware){native_borrowed=NULL;native_width=native_height=0;}
+#endif
     if(hardware) {
         if(!nps64_gpu_readback(&data,width,height)) {
             if(nps64_gpu_failed()) {core_shutdown=true;notify("Error Vulkan. Consulta nps64.log");}
@@ -219,18 +232,29 @@ static void video_refresh(const void *data,unsigned width,unsigned height,size_t
     size_t bytes=hardware || pixel_format==RETRO_PIXEL_FORMAT_XRGB8888?4:2;
     size_t row_bytes=width*bytes,needed=row_bytes*height;
     if(pitch<row_bytes) return;
-    if(needed>native_capacity) {
-        void *p=realloc(native_frame,needed);
-        if(!p) {core_shutdown=true;notify("Memoria insuficiente para video");return;}
-        native_frame=p;native_capacity=needed;
+#ifdef NPS64_GPU_BORROW_TEST
+    if(hardware) {
+        /* The readback fence has completed. This mapped staging buffer is
+         * reused only by the next callback on this same emulation thread.
+         * Retain its pixels through draw/pause; never free driver storage. */
+        native_borrowed=data;
+    } else
+#endif
+    {
+        if(needed>native_capacity) {
+            void *p=realloc(native_frame,needed);
+            if(!p) {core_shutdown=true;notify("Memoria insuficiente para video");return;}
+            native_frame=p;native_capacity=needed;
+        }
+        double snapshot_start=hardware?platform_time():0;
+        if(pitch==row_bytes)memcpy(native_frame,data,needed);
+        else for(unsigned y=0;y<height;y++)memcpy(native_frame+y*row_bytes,(const unsigned char*)data+y*pitch,row_bytes);
+        if(hardware)nps64_gpu_perf_snapshot(platform_time()-snapshot_start);
+        native_borrowed=NULL;
     }
-    double snapshot_start=hardware?platform_time():0;
-    if(pitch==row_bytes)memcpy(native_frame,data,needed);
-    else for(unsigned y=0;y<height;y++)memcpy(native_frame+y*row_bytes,(const unsigned char*)data+y*pitch,row_bytes);
-    if(hardware)nps64_gpu_perf_snapshot(platform_time()-snapshot_start);
     native_width=width;native_height=height;native_format=hardware?RETRO_PIXEL_FORMAT_XRGB8888:pixel_format;native_rgba=hardware;video_frames++;
     if(!first_video) {
-        nps64_log("[load] first_video %ux%u pitch=%zu format=%d\n",width,height,pitch,pixel_format);
+        nps64_log("[load] first_video %ux%u pitch=%zu format=%d storage=%s\n",width,height,pitch,pixel_format,native_borrowed?"borrowed-vulkan":"owned-copy");
         first_video=true;
     }
 }
@@ -246,7 +270,7 @@ static void game_video_draw(void) {
     if(!native_width || !native_height) {memset(out,0,SCREEN_W*SCREEN_H*4);return;}
     unsigned width=native_width,height=native_height;
     size_t bytes=native_format==RETRO_PIXEL_FORMAT_XRGB8888?4:2,pitch=width*bytes;
-    const void *data=native_frame;
+    const void *data=native_video_pixels();
     double ratio=widescreen?16.0/9.0:4.0/3.0;
     unsigned dw=(unsigned)(SCREEN_H*ratio),dh=SCREEN_H;
     if(dw>SCREEN_W) { dw=SCREEN_W; dh=(unsigned)(SCREEN_W/ratio); }
@@ -266,7 +290,7 @@ static void game_video_draw(void) {
 #endif
     bool smoothed=false;
 #ifdef NPS64_IMAGE_SMOOTH_TEST
-    if(filtered_vi && bytes==4 && width<=dw && height<=dh) {
+    if(filtered_vi && bytes==4) {
         static Nps64BilinearScaler smooth;
         for(unsigned y=0;y<dh;y++) {
             uint32_t *row=out+(y+top)*SCREEN_W;
@@ -517,7 +541,7 @@ static int hle_sequence_next(unsigned frame,HleSceneFrame *scene,void *context) 
     scene->depth=nps64_hle_geometry_depth();scene->materials=nps64_hle_geometry_materials();scene->atlas=nps64_hle_geometry_atlas();
     if((frame<8||frame==63)&&native_format==RETRO_PIXEL_FORMAT_XRGB8888){
         unsigned lit=0;
-        for(size_t i=0;i<(size_t)native_width*native_height;i++){uint32_t p;memcpy(&p,native_frame+i*4,4);lit+=(p&0xffffffu)!=0;}
+        for(size_t i=0;i<(size_t)native_width*native_height;i++){uint32_t p;memcpy(&p,native_video_pixels()+i*4,4);lit+=(p&0xffffffu)!=0;}
         nps64_log("[hle-game] CPU reference frame=%u lit=%u total=%u\n",frame,lit,native_width*native_height);
     }
     return 1;
@@ -559,14 +583,14 @@ static void state_action(bool load) {
     notify(ok ? (load?"Estado cargado":"Estado guardado") : (load?"Estado vacio, incompatible o corrupto":"No se pudo guardar estado"));
 }
 static void apply_game_settings(const Nps64GameSettings *s) {
-    widescreen=s->widescreen;filtered_vi=s->filtered_vi;slot=s->slot;controller_pak=s->controller_pak;
+    widescreen=s->widescreen;filtered_vi=s->filtered_vi;slot=s->slot;controller_pak=s->controller_pak;resolution_mode=resolution_next=s->resolution;
 }
 static void config_save(void) {
     preferences.theme=theme;
     if(!nps64_settings_save(CONFIG_PATH,&preferences))notify("No se pudo guardar configuracion");
 }
 static void game_config_save(void) {
-    Nps64GameSettings s={widescreen,filtered_vi,slot,controller_pak};
+    Nps64GameSettings s={widescreen,filtered_vi,slot,controller_pak,resolution_next};
     if(!nps64_game_settings_save(GAME_SETTINGS_DIR,current.key,&s))notify("No se pudo guardar ajuste del juego");
 }
 static bool open_game_settings(void) {
@@ -586,7 +610,7 @@ static bool start_game(void) {
 
 #endif
     current=games[selected]; core_shutdown=false; options_dirty=false; ram_writes_allowed=true;
-    core_frames=video_frames=0; first_video=false; visible_video=false;native_width=native_height=0;game_fps=video_fps=0;
+    core_frames=video_frames=0; first_video=false; visible_video=false;native_width=native_height=0;native_borrowed=NULL;game_fps=video_fps=0;
     nps64_log("[load] path=%s name=%s\n",current.path,current.name);
     notify("Leyendo ROM. Espera..."); menu_draw();
     if(!platform_present()) return false;
@@ -666,7 +690,7 @@ static void stop_game(void) {
     hle_gpu_frames=hle_cpu_fallbacks=hle_repeated_frames=hle_incomplete_frames=0;
 #endif
     platform_rumble_clear();
-    bool saved=save_ram(); retro_unload_game(); nps64_gpu_destroy_context(); retro_deinit(); nps64_gpu_close();use_gpu=false; running=false; paused=false; platform_audio_clear();
+    bool saved=save_ram(); retro_unload_game(); nps64_gpu_destroy_context(); retro_deinit(); nps64_gpu_close();use_gpu=false; running=false; paused=false; native_borrowed=NULL;native_width=native_height=0;platform_audio_clear();
     notify(!ram_writes_allowed?"Partida original conservada: revisa el registro":saved?"Partida guardada. Selecciona otro juego":"No se pudo guardar la partida. Revisa espacio en /data");
     apply_game_settings(&preferences.defaults);
 #ifdef NPS64_HD_UI
@@ -696,26 +720,28 @@ static void game_hud_draw(void) {
 }
 static const char *hud_label(void) {return preferences.hud_mode==0?"Informacion en juego: oculta":preferences.hud_mode==1?"Informacion en juego: FPS":"Informacion en juego: FPS y detalles";}
 static void settings_draw(void) {
-    char rows[8][128];const char *labels[8];unsigned count=settings_page==2?7:8;
+    char rows[9][128];const char *labels[9];unsigned count=settings_page==2?8:9;
     Nps64GameSettings *g=settings_page==2?&editing_game:&preferences.defaults;
     if(settings_page==2) {
         snprintf(rows[0],128,"Aspecto: %s",g->widescreen?"16:9":"4:3 (nativo)");
         snprintf(rows[1],128,"Filtro VI: %s",g->filtered_vi?"preciso":"rapido");
         snprintf(rows[2],128,"Accesorio: %s",g->controller_pak==0?"Rumble Pak":g->controller_pak==1?"Memory Pak":"ninguno");
         snprintf(rows[3],128,"Ranura de estado: %u",g->slot);
-        snprintf(rows[4],128,"Restablecer ajustes de este juego");snprintf(rows[5],128,"Jugar");snprintf(rows[6],128,"Volver");
+        snprintf(rows[4],128,"Resolucion interna: %s",g->resolution?"2x":"nativa");
+        snprintf(rows[5],128,"Restablecer ajustes de este juego");snprintf(rows[6],128,"Jugar");snprintf(rows[7],128,"Volver");
     } else {
         snprintf(rows[0],128,"%s",hud_label());snprintf(rows[1],128,"Tema: %u / 3",theme+1);
         snprintf(rows[2],128,"Filtro VI predeterminado: %s",g->filtered_vi?"preciso":"rapido");
         snprintf(rows[3],128,"Accesorio predeterminado: %s",g->controller_pak==0?"Rumble Pak":g->controller_pak==1?"Memory Pak":"ninguno");
         snprintf(rows[4],128,"Ranura predeterminada: %u",g->slot);
-        snprintf(rows[5],128,"Ajustes del juego seleccionado");
+        snprintf(rows[5],128,"Resolucion predeterminada: %s",g->resolution?"2x":"nativa");
+        snprintf(rows[6],128,"Ajustes del juego seleccionado");
 #ifdef NPS64_UPDATES
-        snprintf(rows[6],128,"Buscar actualizaciones");
+        snprintf(rows[7],128,"Buscar actualizaciones");
 #else
-        snprintf(rows[6],128,"Actualizar caratulas");
+        snprintf(rows[7],128,"Actualizar caratulas");
 #endif
-        snprintf(rows[7],128,"Volver a biblioteca");
+        snprintf(rows[8],128,"Volver a biblioteca");
     }
     for(unsigned i=0;i<count;i++)labels[i]=rows[i];
 #ifdef NPS64_HD_UI
@@ -787,11 +813,12 @@ static void pause_draw(void) {
     rect(275,95,730,510,0xff101e30); rect(275,95,730,5,accent[theme]);
     platform_text(320,128,"PAUSA",accent[theme],3);
 #endif
+    char resolution_label[96];snprintf(resolution_label,sizeof(resolution_label),"Resolucion: %s%s",resolution_next?"2x":"nativa",resolution_next!=resolution_mode?" (proximo inicio)":"");
     const char *labels[]={"Continuar","Guardar estado","Cargar estado",widescreen?"Aspecto del juego: 16:9":"Aspecto del juego: 4:3","Volver a biblioteca",filtered_vi?"Filtro VI: preciso":"Filtro VI: rapido"
 #ifdef NPS64_UPDATES
         ,"Buscar actualizaciones"
 #endif
-        ,hud_label(),controller_pak==0?"Accesorio: Rumble Pak":controller_pak==1?"Accesorio: Memory Pak":"Accesorio: ninguno"
+        ,resolution_label,hud_label(),controller_pak==0?"Accesorio: Rumble Pak":controller_pak==1?"Accesorio: Memory Pak":"Accesorio: ninguno"
     };
 #ifdef NPS64_HD_UI
     char updates[160]="";
@@ -822,8 +849,8 @@ int main(void) {
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
 #ifdef NPS64_GPU_GAME_TEST
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.23.log");
-    nps64_log("NPS64 Vulkan Game Test 00.23; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.26.log");
+    nps64_log("NPS64 Vulkan Game Test 00.26; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
@@ -832,11 +859,11 @@ int main(void) {
 #elif defined(NPS64_HLE_GAME)
     nps64_log("NPS64 00.38 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
-    nps64_log("NPS64 00.23 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
+    nps64_log("NPS64 00.26 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.23 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.26 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.23 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.26 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
@@ -942,7 +969,7 @@ int main(void) {
                 menu_draw();goto present_frame;
             }
             if(settings_page) {
-                unsigned count=settings_page==2?7:8;
+                unsigned count=settings_page==2?8:9;
                 if(pressed&BTN_UP)settings_row=(settings_row+count-1)%count;
                 if(pressed&BTN_DOWN)settings_row=(settings_row+1)%count;
                 if(pressed&BTN_BACK){settings_page=0;sidebar_selected=0;}
@@ -953,24 +980,26 @@ int main(void) {
                         if(settings_row==1)editing_game.filtered_vi=!editing_game.filtered_vi;
                         if(settings_row==2)editing_game.controller_pak=(editing_game.controller_pak+((pressed&BTN_LEFT)?2:1))%3;
                         if(settings_row==3)editing_game.slot=(editing_game.slot+delta)%8;
-                        if(settings_row<4 && !nps64_game_settings_save(GAME_SETTINGS_DIR,games[selected].key,&editing_game))notify("No se pudo guardar ajuste del juego");
-                        if((pressed&BTN_CONFIRM)&&settings_row==4){if(nps64_game_settings_reset(GAME_SETTINGS_DIR,games[selected].key))nps64_game_settings_load(GAME_SETTINGS_DIR,games[selected].key,&preferences.defaults,&editing_game);else notify("No se pudo restablecer");}
-                        if((pressed&BTN_CONFIRM)&&settings_row==5)start_game();
-                        if((pressed&BTN_CONFIRM)&&settings_row==6){settings_page=0;sidebar_selected=0;}
+                        if(settings_row==4)editing_game.resolution^=1;
+                        if(settings_row<5 && !nps64_game_settings_save(GAME_SETTINGS_DIR,games[selected].key,&editing_game))notify("No se pudo guardar ajuste del juego");
+                        if((pressed&BTN_CONFIRM)&&settings_row==5){if(nps64_game_settings_reset(GAME_SETTINGS_DIR,games[selected].key))nps64_game_settings_load(GAME_SETTINGS_DIR,games[selected].key,&preferences.defaults,&editing_game);else notify("No se pudo restablecer");}
+                        if((pressed&BTN_CONFIRM)&&settings_row==6)start_game();
+                        if((pressed&BTN_CONFIRM)&&settings_row==7){settings_page=0;sidebar_selected=0;}
                     } else {
                         if(settings_row==0)preferences.hud_mode=(preferences.hud_mode+((pressed&BTN_LEFT)?2:1))%3;
                         if(settings_row==1)theme=(theme+((pressed&BTN_LEFT)?2:1))%3;
                         if(settings_row==2)preferences.defaults.filtered_vi=!preferences.defaults.filtered_vi;
                         if(settings_row==3)preferences.defaults.controller_pak=(preferences.defaults.controller_pak+((pressed&BTN_LEFT)?2:1))%3;
                         if(settings_row==4)preferences.defaults.slot=(preferences.defaults.slot+delta)%8;
-                        if(settings_row<5){config_save();apply_game_settings(&preferences.defaults);}
-                        if((pressed&BTN_CONFIRM)&&settings_row==5)open_game_settings();
+                        if(settings_row==5)preferences.defaults.resolution^=1;
+                        if(settings_row<6){config_save();apply_game_settings(&preferences.defaults);}
+                        if((pressed&BTN_CONFIRM)&&settings_row==6)open_game_settings();
 #ifdef NPS64_UPDATES
-                        if((pressed&BTN_CONFIRM)&&settings_row==6)nps64_updater_request();
+                        if((pressed&BTN_CONFIRM)&&settings_row==7)nps64_updater_request();
 #elif defined(NPS64_HD_UI)
-                        if((pressed&BTN_CONFIRM)&&settings_row==6){covers_refresh();notify("Caratulas actualizadas");}
+                        if((pressed&BTN_CONFIRM)&&settings_row==7){covers_refresh();notify("Caratulas actualizadas");}
 #endif
-                        if((pressed&BTN_CONFIRM)&&settings_row==7){settings_page=0;sidebar_selected=0;}
+                        if((pressed&BTN_CONFIRM)&&settings_row==8){settings_page=0;sidebar_selected=0;}
                     }
                 }
                 if(pressed&BTN_EXIT)quit_requested=true;
@@ -1045,9 +1074,12 @@ int main(void) {
             if(paused) {
                 if(pressed&BTN_UP) pause_selected=(pause_selected+PAUSE_CHOICES-1)%PAUSE_CHOICES;
                 if(pressed&BTN_DOWN) pause_selected=(pause_selected+1)%PAUSE_CHOICES;
-                if(pressed&BTN_LEFT) {slot=(slot+7)%8;game_config_save();}
-                if(pressed&BTN_RIGHT) {slot=(slot+1)%8;game_config_save();}
+                if((pressed&BTN_LEFT)&&pause_selected!=PAUSE_CHOICES-3) {slot=(slot+7)%8;game_config_save();}
+                if((pressed&BTN_RIGHT)&&pause_selected!=PAUSE_CHOICES-3) {slot=(slot+1)%8;game_config_save();}
                 if(pressed&BTN_BACK) paused=false;
+                if(pause_selected==PAUSE_CHOICES-3 && (pressed&(BTN_CONFIRM|BTN_LEFT|BTN_RIGHT))) {
+                    resolution_next^=1;game_config_save();notify("Resolucion guardada; vuelve a abrir el juego para aplicar");
+                }
                 if(pressed&BTN_CONFIRM) {
                     if(pause_selected==PAUSE_CHOICES-1) {controller_pak=(controller_pak+1)%3;options_dirty=true;platform_rumble_clear();game_config_save();notify("Accesorio cambiado para los cuatro mandos");}
                     else if(pause_selected==PAUSE_CHOICES-2){preferences.hud_mode=(preferences.hud_mode+1)%3;config_save();}
@@ -1099,7 +1131,7 @@ int main(void) {
                 }
 #ifndef __ORBIS__
                 if(getenv("NPS64_HLE_FRAME_HASHES")&&hle_continuous){
-                    const unsigned char *data=hle_frame_ready?hle_pixels:native_frame;
+                    const unsigned char *data=hle_frame_ready?hle_pixels:native_video_pixels();
                     size_t bytes=hle_frame_ready?sizeof(hle_pixels):(size_t)native_width*native_height*(native_format==RETRO_PIXEL_FORMAT_XRGB8888?4:2);
                     uint64_t hash=1469598103934665603ull;
                     for(size_t i=0;data&&i<bytes;i++){hash^=data[i];hash*=1099511628211ull;}

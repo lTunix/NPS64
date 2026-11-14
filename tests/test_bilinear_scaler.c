@@ -5,7 +5,7 @@
 #include <time.h>
 #include <math.h>
 static Nps64BilinearScaler scaler;
-static uint32_t source[640*480],output[1280*720];
+static uint32_t source[1280*960],output[1280*720];
 static double coordinate(unsigned x,unsigned input,unsigned out){double p=((double)x+.5)*input/out-.5;return p<0?0:p>input-1?input-1:p;}
 static uint32_t reference(unsigned x,unsigned y,unsigned w,unsigned h,unsigned dw,unsigned dh,int rgba){
  double sx=coordinate(x,w,dw),sy=coordinate(y,h,dh);unsigned i=(unsigned)sx,j=(unsigned)sy,ii=i+1<w?i+1:i,jj=j+1<h?j+1:j;double fx=sx-i,fy=sy-j;uint32_t v=0xff000000;
@@ -17,7 +17,7 @@ static uint32_t reference(unsigned x,unsigned y,unsigned w,unsigned h,unsigned d
  return v;
 }
 int main(void){
- const unsigned shapes[][4]={{1,1,1,1},{1,3,9,11},{3,1,11,9},{2,2,7,5},{17,11,37,29},{320,240,960,720},{640,480,960,720},{640,480,1280,720}};
+ const unsigned shapes[][4]={{1,1,1,1},{1,3,9,11},{3,1,11,9},{2,2,7,5},{17,11,37,29},{320,240,960,720},{640,480,960,720},{640,480,1280,720},{1280,960,960,720},{1280,576,960,720},{1280,480,960,720},{1280,480,1280,720},{8,3,6,5},{16,7,12,11},{7,3,7,5}};
  for(unsigned t=0;t<sizeof(shapes)/sizeof(shapes[0]);t++)for(int rgba=0;rgba<2;rgba++){
   unsigned w=shapes[t][0],h=shapes[t][1],dw=shapes[t][2],dh=shapes[t][3];
   for(unsigned i=0;i<w*h;i++)source[i]=(i*1634147u+92837u)^0x37ad8941;

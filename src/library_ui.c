@@ -94,8 +94,8 @@ void library_ui_settings(const char *heading,const char *subtitle,const char *co
     library_sidebar(true,focus,side,accent);
     text(232,33,heading,2,0xfff3f6fb,1000);text(234,88,subtitle,0,0xff94a5bf,985);
     for(unsigned i=0;i<count;i++) {
-        int y=155+(int)i*48;bool active=!focus && i==selected;
-        box(232,y,1004,42,active?0xff20354b:0xff111d2d);if(active)box(232,y,3,42,accent);
+        int y=155+(int)i*(count>8?42:48);bool active=!focus && i==selected;
+        box(232,y,1004,count>8?38:42,active?0xff20354b:0xff111d2d);if(active)box(232,y,3,count>8?38:42,accent);
         text(250,y+5,labels[i],1,active?0xffffffff:0xffd4deeb,960);
     }
     int hx=hint(234,574,KEY_CROSS,"Cambiar / abrir",0xff94a5bf);

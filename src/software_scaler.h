@@ -4,12 +4,19 @@
 #include <stddef.h>
 #if defined(__SSE2__)
 #include <emmintrin.h>
+#if defined(__SSSE3__)
+#include <tmmintrin.h>
+#endif
 static inline __m128i nps64_rgba_to_argb(__m128i value,int rgba){
     if(rgba){
+#if defined(__SSSE3__)
+        value=_mm_shuffle_epi8(value,_mm_setr_epi8(2,1,0,3,6,5,4,7,10,9,8,11,14,13,12,15));
+#else
         __m128i keep=_mm_and_si128(value,_mm_set1_epi32((int)0xff00ff00u));
         __m128i red=_mm_slli_epi32(_mm_and_si128(value,_mm_set1_epi32(255)),16);
         __m128i blue=_mm_and_si128(_mm_srli_epi32(value,16),_mm_set1_epi32(255));
         value=_mm_or_si128(keep,_mm_or_si128(red,blue));
+#endif
     }
     return _mm_or_si128(value,_mm_set1_epi32((int)0xff000000u));
 }

@@ -20,3 +20,18 @@ if marker not in text:
     text = marker + '\n' + text
     path.write_text(text)
 print('Empty Vulkan attachment copies guarded in ' + str(root))
+
+# Upscaling can produce INT_MIN sentinel coordinates. Widen before abs so
+# the conservative overflow/scissor test cannot itself overflow signed int.
+path = root / 'mupen64plus-video-paraLLEl/parallel-rdp/parallel-rdp/rdp_renderer.cpp'
+text = path.read_text()
+old = 'auto max_range_x = std::max(std::abs(start_x), std::abs(end_x));'
+new = '''const int64_t max_range_x = std::max(
+        start_x < 0 ? -int64_t(start_x) : int64_t(start_x),
+        end_x < 0 ? -int64_t(end_x) : int64_t(end_x));'''
+wide = 'auto max_range_x = std::max(std::abs(int64_t(start_x)), std::abs(int64_t(end_x)));'
+text = text.replace(wide, old)
+if new not in text:
+    assert text.count(old) == 1, 'Review raster range overflow guard'
+    path.write_text(text.replace(old, new))
+print('Raster range abs widened before evaluating INT_MIN in ' + str(root))
