@@ -54,7 +54,11 @@ int main(void){
  unsigned char rom[4096]={0x80,0x37,0x12,0x40};FILE*f=fopen("build/testdata/games/NPS64-test.z64","rb");
  assert(f);assert(fread(rom,1,sizeof rom,f)==sizeof rom);fclose(f);
  assert(file_write_atomic(DATA_ROOT "/games/A.z64",rom,sizeof rom));rom[100]^=1;assert(file_write_atomic(DATA_ROOT "/games/B.z64",rom,sizeof rom));
- assert(frontend_main()==0);use_gpu=true;resolution_mode=0;assert(!strcmp(override("parallel-n64-upscaling"),"1x"));resolution_mode=1;assert(!strcmp(override("parallel-n64-upscaling"),"2x"));use_gpu=false;Nps64AppSettings stored;assert(nps64_settings_load(CONFIG_PATH,&stored)&&stored.hud_mode==0);
+ assert(frontend_main()==0);use_gpu=true;resolution_mode=0;assert(!strcmp(override("parallel-n64-upscaling"),"1x"));resolution_mode=1;assert(!strcmp(override("parallel-n64-upscaling"),"2x"));char previous_key[sizeof current.key];memcpy(previous_key,current.key,sizeof previous_key);
+ strcpy(current.key,"rom-cf6bb875013bfa0c");assert(!strcmp(override("parallel-n64-parallel-rdp-synchronous"),"enabled"));
+ resolution_mode=0;assert(!strcmp(override("parallel-n64-parallel-rdp-synchronous"),"enabled"));
+ strcpy(current.key,"rom-0000000000000000");resolution_mode=1;assert(!strcmp(override("parallel-n64-parallel-rdp-synchronous"),"enabled"));
+ memcpy(current.key,previous_key,sizeof previous_key);use_gpu=false;Nps64AppSettings stored;assert(nps64_settings_load(CONFIG_PATH,&stored)&&stored.hud_mode==0);
  native_width=2;native_height=2;native_format=RETRO_PIXEL_FORMAT_XRGB8888;native_frame=malloc(16);assert(native_frame);for(unsigned i=0;i<4;i++)((uint32_t*)native_frame)[i]=0xff336699;
  widescreen=false;game_video_draw();assert(fb[360*SCREEN_W+100]==0xff000000&&fb[360*SCREEN_W+640]==0xff336699);
  widescreen=true;game_video_draw();assert(fb[360*SCREEN_W+100]==0xff336699);

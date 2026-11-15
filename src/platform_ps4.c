@@ -116,7 +116,11 @@ static void *audio_worker(void *unused) {
     while(!__atomic_load_n(&audio_stop,__ATOMIC_ACQUIRE)) {
 #ifdef NPS64_AUDIO_DIRECT_TEST
         /* Preserve every resampled frame; isolate the overlap-add stage. */
+#ifdef NPS64_AUDIO_RECOVERY_TEST
+        nps64_audio_take_recover(&audio_queue,blocks[current]);
+#else
         nps64_audio_take(&audio_queue,blocks[current]);
+#endif
 #else
         nps64_audio_take_smooth(&audio_queue,&audio_stretch,blocks[current]);
         __atomic_store_n(&audio_tempo_ppm,(unsigned)(audio_stretch.tempo*1000000),__ATOMIC_RELAXED);
@@ -344,6 +348,9 @@ void platform_audio(const int16_t *samples,size_t frames,double rate) {
                    NPS64_AUDIO_TARGET/48.0,
 #endif
                    audio_resampler.rate,output_hz,__atomic_load_n(&audio_priority_result,__ATOMIC_ACQUIRE),__atomic_load_n(&audio_tempo_ppm,__ATOMIC_RELAXED)/1000000.0);
+#ifdef NPS64_AUDIO_RECOVERY_TEST
+        nps64_log("[audio-recovery] restart_ms=%.3f partial_frames=%u gap_total_ms=%.3f gap_active_ms=%.3f gap_max_ms=%.3f\n",NPS64_AUDIO_RESTART/48.,__atomic_load_n(&audio_queue.partial_frames,__ATOMIC_RELAXED),__atomic_load_n(&audio_queue.recovery_frames,__ATOMIC_RELAXED)/48.,__atomic_load_n(&audio_queue.recovery_current,__ATOMIC_RELAXED)/48.,__atomic_load_n(&audio_queue.recovery_max,__ATOMIC_RELAXED)/48.);
+#endif
     }
 }
 void platform_audio_clear(void) {

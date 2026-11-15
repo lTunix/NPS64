@@ -653,6 +653,7 @@ static bool start_game(void) {
         use_jit=requested_cpu && nps64_core_jit_supported();
         nps64_log("[jit] requested=%u executable=%d selected=%s\n",requested_cpu,use_jit,use_jit?"Ari64":"cached interpreter");
         nps64_log("[load] renderer=%s CPU=%s\n",use_gpu?"paraLLEl-RDP Vulkan":"Angrylion",use_jit?"Ari64":"cached");
+        nps64_log("[rdp-policy] fullsync=%s resolution=%s rom=%s\n",override("parallel-n64-parallel-rdp-synchronous"),resolution_mode?"2x":"native",current.key);
         retro_init();
         if(!retro_load_game(&info)) {
             retro_deinit();nps64_gpu_close();use_gpu=false;
@@ -872,8 +873,8 @@ int main(void) {
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
 #ifdef NPS64_GPU_GAME_TEST
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.29.log");
-    nps64_log("NPS64 Vulkan Game Test 00.29; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.31.log");
+    nps64_log("NPS64 Vulkan Game Test 00.31; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
@@ -882,11 +883,11 @@ int main(void) {
 #elif defined(NPS64_HLE_GAME)
     nps64_log("NPS64 00.38 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
-    nps64_log("NPS64 00.29 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
+    nps64_log("NPS64 00.31 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.29 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.31 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.29 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.31 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
