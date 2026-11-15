@@ -16,6 +16,8 @@ bool platform_rumble(unsigned port,unsigned effect,uint16_t strength);
 void platform_rumble_clear(void);
 uint32_t *platform_framebuffer(void);
 bool platform_present(void);
+/* Call before CPU drawing over GPU-owned output; no-op for the CPU canvas. */
+void platform_overlay_begin(int x,int y,int width,int height) __attribute__((weak));
 /* Optional Vulkan-owned coherent scanout buffers. Weak on host backends. */
 bool platform_gpu_scanout_register(void *const buffers[3]) __attribute__((weak));
 bool platform_gpu_scanout_acquire(void *pixels) __attribute__((weak));

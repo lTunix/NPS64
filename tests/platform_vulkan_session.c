@@ -23,3 +23,20 @@ void platform_poll(Input pads[4]) {
         exit_step++;
     }
 }
+#ifdef NPS64_CHEAT_CORE_TEST
+#include <libretro.h>
+#include <assert.h>
+void __real_retro_run(void);
+void __wrap_retro_run(void){
+    static unsigned frame;static unsigned char old;static size_t offset;static unsigned char *ram;
+    if(frame==70){
+        size_t size=retro_get_memory_size(RETRO_MEMORY_SYSTEM_RAM);ram=retro_get_memory_data(RETRO_MEMORY_SYSTEM_RAM);assert(ram&&size>=4*1024*1024);
+        offset=size-16;old=ram[offset^3];char code[32];snprintf(code,sizeof code,"%08X 00B7",0x80000000u|(unsigned)offset);retro_cheat_set(4095,true,code);
+    }
+    if(frame==71)retro_cheat_set(4095,false,NULL);
+    __real_retro_run();
+    if(frame==70){assert(ram[offset^3]==0xb7);nps64_log("[cheat-core-test] live write applied\n");}
+    if(frame==71){assert(ram[offset^3]==old);nps64_log("[cheat-core-test] live disable restored original byte\n");}
+    frame++;
+}
+#endif

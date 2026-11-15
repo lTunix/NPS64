@@ -2,6 +2,9 @@
 #include "input_ps4.h"
 #include "log.h"
 #include "scanout_copy.h"
+#ifdef NPS64_GPU_PRESENT_TEST
+#include "overlay_cache.h"
+#endif
 #include "audio_queue.h"
 #include "audio_stretch.h"
 #include "audio_resampler.h"
@@ -37,6 +40,9 @@ static uint32_t *canvas;
 #ifdef NPS64_GPU_PRESENT_TEST
 static void *gpu_scanout[3];static int gpu_buffer_set=-1,gpu_selected=-1;
 static int64_t gpu_retire[3];static uint32_t *cpu_canvas;
+static Nps64OverlayCache overlay_cache;
+static double overlay_prepare_seconds,overlay_publish_seconds;
+static unsigned overlay_lines,overlay_frames;
 #endif
 #if defined(NPS64_GPU) && !defined(NPS64_GPU_GAME_TEST)
 #define SCANOUT_BUFFERS 2
@@ -284,9 +290,13 @@ bool platform_gpu_scanout_acquire(void *pixels) {
         return wait_flip(frame-(SCANOUT_BUFFERS-1))&&wait_flip(gpu_retire[i]);
     return false;
 }
+void platform_overlay_begin(int x,int y,int w,int h){
+    if(gpu_selected<0)return;
+    double started=platform_time();nps64_overlay_begin(&overlay_cache,canvas,x,y,w,h);overlay_prepare_seconds+=platform_time()-started;
+}
 bool platform_gpu_scanout_select(void *pixels) {
     if(gpu_buffer_set<0)return false;
-    for(unsigned i=0;i<3;i++)if(pixels==gpu_scanout[i]){gpu_selected=(int)i;canvas=pixels;return true;}
+    for(unsigned i=0;i<3;i++)if(pixels==gpu_scanout[i]){gpu_selected=(int)i;canvas=pixels;nps64_overlay_reset(&overlay_cache);return true;}
     return false;
 }
 bool platform_gpu_scanout_unregister(void) {
@@ -316,6 +326,10 @@ bool platform_present(void) {
     double copied=platform_time();
     wait_seconds+=ready-started;copy_seconds+=copied-ready;samples++;
 #ifdef NPS64_GPU_PRESENT_TEST
+    if(external){
+        double publish_started=platform_time();overlay_lines+=nps64_overlay_publish(&overlay_cache,canvas);overlay_publish_seconds+=platform_time()-publish_started;
+        if(++overlay_frames==60){nps64_log("[overlay-cache] frames=%u lines_avg=%.1f prepare_ms=%.3f publish_ms=%.3f full_frame_lines=%u\n",overlay_frames,(double)overlay_lines/overlay_frames,1000*overlay_prepare_seconds/overlay_frames,1000*overlay_publish_seconds/overlay_frames,NPS64_OVERLAY_ROW_LINES*NPS64_OVERLAY_HEIGHT);overlay_prepare_seconds=overlay_publish_seconds=0;overlay_lines=overlay_frames=0;}
+    }
     unsigned flip_buffer=external?SCANOUT_BUFFERS+(unsigned)gpu_selected:(unsigned)active;
     __asm__ volatile("sfence" ::: "memory");
 #else

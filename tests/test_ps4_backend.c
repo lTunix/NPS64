@@ -209,7 +209,7 @@ int main(void) {
             unsigned index=i%3;assert(platform_gpu_scanout_acquire(gpu_pixels[index]));
             check_scanout_retained();memset(gpu_pixels[index],(int)i,SCREEN_W*SCREEN_H*4);
             assert(platform_gpu_scanout_select(gpu_pixels[index]));assert(platform_framebuffer()==gpu_pixels[index]);
-            platform_text(0,0,"HUD",0xffffffff,1);assert(platform_present());assert(platform_framebuffer()==canvas);
+            platform_overlay_begin(0,0,64,16);platform_text(0,0,"HUD",0xffffffff,1);assert(platform_present());assert(platform_framebuffer()==canvas);
             if(i%13==0){canvas[0]=i;assert(platform_present());}
         }
         assert(platform_gpu_scanout_unregister());check_scanout_retained();assert(platform_framebuffer()==canvas);

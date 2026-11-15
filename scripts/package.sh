@@ -21,6 +21,8 @@ entry TITLE Utf8 128 'NPS64 by lTunix'
 entry TITLE_ID Utf8 12 NPSX00064
 entry VERSION Utf8 8 "${NPS64_VERSION:-00.13}"
 cp -a assets/font.bin "$stage/"
+python3 scripts/compile_cheat_database.py assets/mupencheat.txt "$stage/cheats.db"
+head -n 39 assets/mupencheat.txt > "$stage/CHEAT-NOTICE.txt"
 cp LICENSE "$stage/LICENSE.txt"
 cp docs/CREDITS.md "$stage/CREDITS.txt"
 cp /usr/share/doc/fonts-dejavu-core/copyright "$stage/FONT-LICENSE.txt"
@@ -32,6 +34,6 @@ cp "$sdk/samples/piglet/sce_sys/about/right.sprx" "$stage/sce_sys/about/"
 python3 /work/scripts/check_stage.py "$stage"
 cd "$stage"
 rm -f pkg.gp4
-"$tools/create-gp4" -out pkg.gp4 --content-id="$content" --files 'eboot.bin font.bin ui-font.bin cover-catalog.txt LICENSE.txt CREDITS.txt FONT-LICENSE.txt sce_sys/param.sfo sce_sys/icon0.png sce_module/libc.prx sce_module/libSceFios2.prx sce_sys/about/right.sprx'
+"$tools/create-gp4" -out pkg.gp4 --content-id="$content" --files 'eboot.bin font.bin ui-font.bin cover-catalog.txt cheats.db CHEAT-NOTICE.txt LICENSE.txt CREDITS.txt FONT-LICENSE.txt sce_sys/param.sfo sce_sys/icon0.png sce_module/libc.prx sce_module/libSceFios2.prx sce_sys/about/right.sprx'
 "$tools/PkgTool.Core" pkg_build pkg.gp4 /work/out
 rm -f pkg.gp4

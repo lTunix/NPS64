@@ -42,6 +42,13 @@ Games supporting Rumble Pak can vibrate the controller. It is enabled by default
 
 The **00.71** interface defaults to **English**. In **Settings → Language**, choose **English** or **Espanol**. Changes take effect immediately and are saved. Existing settings keep their other preferences and initially use English. This changes the NPS64 interface, not the language of your ROMs. The published 00.70 interface is in Spanish.
 
+
+## Cheats (experimental test 00.33)
+
+The test build includes the Mupen64Plus GameShark database and selects entries using the ROM header CRC and country, not its filename. Open **Game settings → Cheats** from the library, or **Cheats** in the **L3 + R3** pause menu. Press **X** to toggle a code, **L1/R1** to change pages, **Square** to disable all and **Circle** to return. In gameplay, **R2** acts as the GameShark button for codes that require it.
+
+Cheats are off by default. Selections are saved per ROM; variants of a code are mutually exclusive, with up to 32 active entries. The catalog includes parameter choices and omits 29 entries with unsupported/malformed formats. Some codes require a game restart and disabling a cheat cannot undo every change already made, including changes saved by a game. This feature does not change the ROM language or patch the ROM file. It is not part of the published 00.71 PKG yet.
+
 ## Updates
 
 When the application opens, NPS64 checks GitHub for new releases and automatically downloads them to `/data/pkg`. You can also select **Check for updates** in Settings or the pause menu.

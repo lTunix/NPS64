@@ -8,3 +8,4 @@ void library_ui_settings(const char *title,const char *subtitle,const char *cons
 void library_ui_shutdown(void);
 void library_ui_pause(const char *const *labels,unsigned count,unsigned selected,unsigned slot,uint32_t accent,const char *message,const char *updates);
 #endif
+void library_ui_cheats(const char *game,const char *const *rows,unsigned count,unsigned selected,unsigned first,unsigned total,uint32_t accent,const char *message);

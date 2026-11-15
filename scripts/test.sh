@@ -43,7 +43,7 @@ make -C build/native-core -j"${JOBS:-4}" platform=unix WITH_DYNAREC= HAVE_OPENGL
 python3 tests/make_test_rom.py
 clang -std=c11 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Werror -O2 -Isrc -Ivendor/parallel-n64/libretro-common/include -g -fsanitize=address,undefined tests/test_render.c src/storage.c src/log.c tests/platform_host.c build/native-core/parallel_n64.a -lm -lpthread -o build/test-render
 build/test-render
-clang -std=c11 -D_POSIX_C_SOURCE=200809L -DDATA_ROOT='"/work/build/testdata"' -Wall -Wextra -Werror -O2 -Isrc -Ivendor/parallel-n64/libretro-common/include src/frontend.c src/i18n.c src/settings.c src/storage.c src/log.c tests/platform_host.c build/native-core/parallel_n64.a -lm -lpthread -o build/test-frontend
+clang -std=c11 -D_POSIX_C_SOURCE=200809L -DDATA_ROOT='"/work/build/testdata"' -Wall -Wextra -Werror -O2 -Isrc -Ivendor/parallel-n64/libretro-common/include src/frontend.c src/i18n.c src/cheats.c src/settings.c src/storage.c src/log.c tests/platform_host.c build/native-core/parallel_n64.a -lm -lpthread -o build/test-frontend
 bash scripts/test_frontend_settings.sh
 for profile in 0 4; do
 printf 'NPS64DIAG1 %s\n' "$profile" > build/testdata/diagnostics.cfg

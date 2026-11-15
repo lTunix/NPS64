@@ -136,9 +136,18 @@ void library_ui_shutdown(void){covers_shutdown();free(font);font=NULL;}
 void library_ui_pause(const char *const *labels,unsigned count,unsigned selected,unsigned slot,uint32_t accent,const char *message,const char *updates) {
     box(282,80,716,568,0xff050a12);box(290,86,700,552,0xff111d2d);box(290,86,700,3,accent);
     text(326,103,nps64_tr("Pausa"),2,0xfff3f6fb,620);
-    for(unsigned i=0;i<count;i++){int y=158+(int)i*(count>7?40:46);if(i==selected){box(318,y,644,count>7?36:42,0xff20354b);box(318,y,3,count>7?36:42,accent);}text(336,y+6,labels[i],1,i==selected?0xffffffff:0xffcbd7e7,610);}
+    for(unsigned i=0;i<count;i++){int y=144+(int)i*(count>10?32:count>7?36:46);if(i==selected){box(318,y,644,count>10?28:count>7?32:42,0xff20354b);box(318,y,3,count>10?28:count>7?32:42,accent);}text(336,y+6,labels[i],1,i==selected?0xffffffff:0xffcbd7e7,610);}
     char line[128];snprintf(line,sizeof(line),nps64_tr("Ranura %u / 7"),slot);text(326,533,line,0,0xff94a5bf,150);
     button_icon(496,530,KEY_LEFT,0xff94a5bf);hint(530,530,KEY_RIGHT,nps64_tr("Cambiar ranura"),0xff94a5bf);
     int hx=hint(326,605,KEY_CROSS,nps64_tr("Elegir"),0xff94a5bf);hint(hx,605,KEY_CIRCLE,nps64_tr("Continuar"),0xff94a5bf);
     text(326,574,message,0,0xff94a5bf,630);if(updates&&*updates)text(326,552,updates,0,accent,630);
+}
+void library_ui_cheats(const char *game,const char *const *rows,unsigned count,unsigned selected,unsigned first,unsigned total,uint32_t accent,const char *message){
+ library_ui_settings(nps64_tr("Trucos"),game,rows,count,selected,false,1,accent,message);
+ char page[64];snprintf(page,sizeof page,"%u-%u / %u",total?first+1:0,total?first+count:0,total);text(1040,91,page,0,0xff94a5bf,190);
+ box(190,570,1090,72,0xff0a101c);
+ int x=hint(234,578,KEY_CROSS,nps64_tr("Activar / desactivar"),0xff94a5bf);
+ x=hint(x,578,KEY_SQUARE,nps64_tr("Desactivar todos"),0xff94a5bf);hint(x,578,KEY_CIRCLE,nps64_tr("Volver"),0xff94a5bf);
+ hint(234,610,KEY_L1,nps64_tr("Pagina anterior"),0xff94a5bf);hint(505,610,KEY_R1,nps64_tr("Pagina siguiente"),0xff94a5bf);
+ box(190,680,1090,40,0xff101a2a);text(232,686,nps64_tr("R2 en juego: boton GameShark. Algunos cambios requieren reiniciar el juego."),0,0xff94a5bf,990);
 }

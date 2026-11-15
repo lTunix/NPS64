@@ -4,7 +4,7 @@ cd /work
 clang -std=c11 -g -fsanitize=address,undefined -Wall -Wextra -Werror -Isrc tests/test_jit_memory.c src/runtime_ps4.c -lpthread -o build/test-jit-memory
 build/test-jit-memory
 python3 tests/make_test_rom.py
-clang -std=c11 -D_POSIX_C_SOURCE=200809L -DDATA_ROOT='"/work/build/testdata"' -Wall -Wextra -Werror -O2 -Isrc -Ivendor/parallel-n64/libretro-common/include src/frontend.c src/i18n.c src/settings.c src/storage.c src/log.c tests/platform_host.c ${JIT_ARCHIVE:-build/native-jit/parallel_n64.a} -lm -lpthread -o build/test-frontend-jit
+clang -std=c11 -D_POSIX_C_SOURCE=200809L -DDATA_ROOT='"/work/build/testdata"' -Wall -Wextra -Werror -O2 -Isrc -Ivendor/parallel-n64/libretro-common/include src/frontend.c src/i18n.c src/cheats.c src/settings.c src/storage.c src/log.c tests/platform_host.c ${JIT_ARCHIVE:-build/native-jit/parallel_n64.a} -lm -lpthread -o build/test-frontend-jit
 for profile in "0 0" "1 0" "1 4"; do
 read -r cpu workers <<< "$profile"
 printf 'NPS64DIAG3 %s 1 %s\n' "$workers" "$cpu" > build/testdata/diagnostics.cfg

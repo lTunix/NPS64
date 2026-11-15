@@ -1,0 +1,7 @@
+{
+  "project": "Mupen64Plus",
+  "source": "https://github.com/mupen64plus/mupen64plus-core/blob/934a72cbcb0ad5ffe76d200736e8a9944c11ec19/data/mupencheat.txt",
+  "license": "GPL-2.0-or-later",
+  "copyright": "2008 Gent; see original header",
+  "sha256": "d3206c3f5cf57a8ebcc29729837fb9f5c1645a6c571e68aa08a178db2e950b36"
+}

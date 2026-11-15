@@ -48,3 +48,5 @@ Decodificador PNG: [stb_image, Sean Barrett y colaboradores](https://github.com/
 El diagnóstico fatal del título Vulkan de prueba toma los offsets ABI FreeBSD/PS4
 de `port/ps4_crashlog.cpp` de [DolphinPS4](https://github.com/iHaiDeeZ/DolphinPS4/)
 (revisión 69360a1); la captura y escritura acotada se implementan en `src/gpu_crashlog.c`.
+
+Cheats: base `mupencheat.txt` de Mupen64Plus, copyright (C) 2008 Gent, GPL-2.0-or-later, adaptada originalmente de la base Project64 con permiso. Se conserva su cabecera completa en `assets/mupencheat.txt` y se incluye `CHEAT-NOTICE.txt` en el PKG. Procedencia y hash en `assets/mupencheat.source.json`. El catálogo compilado selecciona CRC1/CRC2 y región exactos; los nombres y códigos se conservan en inglés.

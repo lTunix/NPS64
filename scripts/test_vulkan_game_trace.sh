@@ -5,33 +5,39 @@ cd /work
 core_dir="${NATIVE_GPU_DIR:-build/native-gpu-asan}"
 test_data="${NPS64_GPU_TEST_DATA:-/work/build/gpu-game-rom}"
 test -f "$core_dir/parallel_n64.a"
+python3 scripts/compile_cheat_database.py assets/mupencheat.txt build/cheats-33/cheats.db
 present_flags=()
 if [ "${NPS64_NATIVE_GPU_PRESENT:-0}" = 1 ]; then present_flags=(-DNPS64_GPU_PRESENT_TEST); fi
-clang++-21 -resource-dir=/work/build/tools/usr/lib/llvm-18/lib/clang/18 \
+cheat_flags=()
+if [ "${NPS64_NATIVE_CHEAT_TEST:-0}" = 1 ]; then cheat_flags=(-DNPS64_CHEAT_CORE_TEST -Wl,--wrap=retro_run); fi
+clang++-21 "${cheat_flags[@]}" -resource-dir=/work/build/tools/usr/lib/llvm-18/lib/clang/18 \
   -x c "${present_flags[@]}" -DNPS64_LOG_ASYNC -mssse3 -std=c11 -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L \
-  -DNPS64_GPU -DNPS64_IMAGE_SMOOTH_TEST -DNPS64_INTERNAL_2X_TEST -DNPS64_GPU_BORROW_TEST -DNPS64_GPU_GAME_TEST -DNPS64_HOST_COMPILE_WORKER_TEST -DNPS64_GAME_TEST_SECONDS="${NPS64_NATIVE_GAME_SECONDS:-60}" -DNPS64_SESSION_TEST_SECONDS="${NPS64_NATIVE_GAME_SECONDS:-60}" "-DDATA_ROOT=\"$test_data\"" \
+  -DNPS64_CHEAT_DATABASE="\"/work/build/cheats-33/cheats.db\"" -DNPS64_GPU -DNPS64_IMAGE_SMOOTH_TEST -DNPS64_INTERNAL_2X_TEST -DNPS64_GPU_BORROW_TEST -DNPS64_GPU_GAME_TEST -DNPS64_HOST_COMPILE_WORKER_TEST -DNPS64_GAME_TEST_SECONDS="${NPS64_NATIVE_GAME_SECONDS:-60}" -DNPS64_SESSION_TEST_SECONDS="${NPS64_NATIVE_GAME_SECONDS:-60}" "-DDATA_ROOT=\"$test_data\"" \
   -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -Wall -Wextra -Werror \
   -Isrc -Ivendor/parallel-n64/libretro-common/include \
   -Ivendor/parallel-n64/mupen64plus-core/src -Ivendor/parallel-n64/mupen64plus-core/src/api \
   -Ivendor/parallel-n64/mupen64plus-video-paraLLEl/parallel-rdp/vulkan-headers/include \
-  src/gpu_presenter.c src/frontend.c src/i18n.c src/settings.c src/gpu_vulkan.c src/gpu_api_trace.c src/gpu_compile_worker.c src/gpu_cache_store.c src/gpu_recipes.c src/gpu_crashlog.c src/sha256.c src/storage.c src/log.c tests/platform_vulkan_session.c \
-  -x none "$core_dir/parallel_n64.a" -fuse-ld=lld -ldl -lm -lpthread -o build/bench-vulkan-game-00.32-asan
+  src/gpu_presenter.c src/frontend.c src/i18n.c src/cheats.c src/settings.c src/gpu_vulkan.c src/gpu_api_trace.c src/gpu_compile_worker.c src/gpu_cache_store.c src/gpu_recipes.c src/gpu_crashlog.c src/sha256.c src/storage.c src/log.c tests/platform_vulkan_session.c \
+  -x none "$core_dir/parallel_n64.a" -fuse-ld=lld -ldl -lm -lpthread -o build/bench-vulkan-game-00.35-asan
 BENCH_FRAMES=1000000 NPS64_GPU_NO_DEEPBIND=1 \
   ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1 \
   ASAN_SYMBOLIZER_PATH=/work/build/tools/usr/bin/llvm-symbolizer-18 \
   VK_DRIVER_FILES=/usr/share/vulkan/icd.d/lvp_icd.json \
   VK_LAYER_PATH=/work/build/tools/usr/share/vulkan/explicit_layer.d \
   VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation \
-  timeout 180 build/bench-vulkan-game-00.32-asan > build/vulkan-game-00.32-asan.log 2>&1
+  timeout 180 build/bench-vulkan-game-00.35-asan > build/vulkan-game-00.35-asan.log 2>&1
 python3 - "$test_data" "${NPS64_NATIVE_GAME_SECONDS:-60}" "${NPS64_NATIVE_SCALE:-2}" <<'PY'
 from pathlib import Path
 import json, sys, re
 sys.path.insert(0, 'scripts')
 from analyze_gpu_checkpoints import analyze
 data = Path(sys.argv[1])
-text = (data / 'vulkan-game-test.log').read_text().split('NPS64 Vulkan Game Test 00.32;')[-1]
-driver = Path('build/vulkan-game-00.32-asan.log').read_text()
-report = analyze('NPS64 Vulkan Game Test 00.32;' + text + '\n' + driver)
+text = (data / 'vulkan-game-test.log').read_text().split('NPS64 Vulkan Game Test 00.35;')[-1]
+driver = Path('build/vulkan-game-00.35-asan.log').read_text()
+report = analyze('NPS64 Vulkan Game Test 00.35;' + text + '\n' + driver)
+if __import__('os').environ.get('NPS64_NATIVE_CHEAT_TEST','0')=='1':
+    assert '[cheat-core-test] live write applied' in text
+    assert '[cheat-core-test] live disable restored original byte' in text
 assert not any('runtime error:' in line and ('rdp_renderer.cpp' in line or 'bilinear_scaler.h' in line) for line in driver.splitlines())
 assert report['entries'] == 0 and not report['pending_calls'] and not report['log_errors']
 limits = re.findall(r'\[gpu-test\] LIMIT reached elapsed_s=([\d.]+) VI=(\d+);', text)
@@ -45,7 +51,8 @@ assert driver.count('[pipeline-compile] begin') > 0
 assert driver.count('[pipeline-compile] begin') == driver.count('[pipeline-compile] end')
 if sys.argv[3]=='2':
     assert 'Using 2x upscaling!' in text
-    assert any(int(w)>640 for w in re.findall(r'\[gpu\] scanout geometry (\d+)x',text)), 'No upscaled scanout'
+    minimum=int(__import__('os').environ.get('NPS64_NATIVE_MIN_SCANOUT_WIDTH','641'))
+    assert any(int(w)>=minimum for w in re.findall(r'\[gpu\] scanout geometry (\d+)x',text)), 'No upscaled scanout'
 else:
     assert 'Using 2x upscaling!' not in text
     assert max(map(int,re.findall(r'\[gpu\] scanout geometry (\d+)x',text)))<=640
@@ -103,8 +110,8 @@ assert not any('parallel-rdp/vulkan/' in line for line in reports), 'Vulkan UBSa
 report['remaining_ubsan_reports'] = reports
 out = Path('build/gpu-game-test')
 out.mkdir(exist_ok=True)
-(out / 'host-00.32-checkpoints.json').write_text(json.dumps(report, indent=2))
-(out / 'host-00.32-core.log').write_text('NPS64 Vulkan Game Test 00.32;' + text)
+(out / 'host-00.35-checkpoints.json').write_text(json.dumps(report, indent=2))
+(out / 'host-00.35-core.log').write_text('NPS64 Vulkan Game Test 00.35;' + text)
 print('PASS: split RDP beyond 180 VI, timed cap, resume prevented, compact metrics; no ASan or Vulkan validation error')
 print(f'UBSan reports outside Vulkan retained for triage: {len(reports)}; this is not a clean UBSan run')
 PY

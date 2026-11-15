@@ -3,6 +3,8 @@ from pathlib import Path
 import sys
 
 root = Path(sys.argv[1])
+from patch_cheats import patch as patch_cheats
+patch_cheats(root)
 from patch_audio import patch_audio
 patch_audio(root)
 
