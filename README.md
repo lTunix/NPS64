@@ -40,14 +40,14 @@ Games supporting Rumble Pak can vibrate the controller. It is enabled by default
 
 ## Language
 
-The **00.71** interface defaults to **English**. In **Settings → Language**, choose **English** or **Espanol**. Changes take effect immediately and are saved. Existing settings keep their other preferences and initially use English. This changes the NPS64 interface, not the language of your ROMs. The published 00.70 interface is in Spanish.
+The **00.72** interface defaults to **English**. In **Settings → Language**, choose **English** or **Espanol**. Changes take effect immediately and are saved. Existing settings keep their other preferences and initially use English. This changes the NPS64 interface, not the language of your ROMs.
 
 
-## Cheats (experimental test 00.33)
+## Cheats (experimental)
 
-The test build includes the Mupen64Plus GameShark database and selects entries using the ROM header CRC and country, not its filename. Open **Game settings → Cheats** from the library, or **Cheats** in the **L3 + R3** pause menu. Press **X** to toggle a code, **L1/R1** to change pages, **Square** to disable all and **Circle** to return. In gameplay, **R2** acts as the GameShark button for codes that require it.
+Version **00.72** includes the Mupen64Plus GameShark database and selects entries using the ROM header CRC and country, not its filename. Open **Game settings → Cheats** from the library, or **Cheats** in the **L3 + R3** pause menu. Press **X** to toggle a code, **L1/R1** to change pages, **Square** to disable all and **Circle** to return. In gameplay, **R2** acts as the GameShark button for codes that require it.
 
-Cheats are off by default. Selections are saved per ROM; variants of a code are mutually exclusive, with up to 32 active entries. The catalog includes parameter choices and omits 29 entries with unsupported/malformed formats. Some codes require a game restart and disabling a cheat cannot undo every change already made, including changes saved by a game. This feature does not change the ROM language or patch the ROM file. It is not part of the published 00.71 PKG yet.
+Cheats are off by default. Selections are saved per ROM; variants of a code are mutually exclusive, with up to 32 active entries. The catalog includes parameter choices and omits 29 entries with unsupported/malformed formats. Some codes require a game restart and disabling a cheat cannot undo every change already made, including changes saved by a game. This feature does not change the ROM language or patch the ROM file.
 
 ## Updates
 
@@ -74,7 +74,7 @@ The menu shows download progress. Once complete, install the new PKG using your 
 - [x] Native or 2× internal resolution, saved per game.
 - [x] Library settings and configurable FPS/details overlay.
 - [ ] Install updates directly from the application.
-- [ ] Improve compatibility and performance in demanding games.
+- [x] Improve compatibility and performance in demanding games.
 
 Since **00.70**, the public PKG includes the Vulkan renderer tested on PS4. It improves smoothness, 2× presentation and audio continuity. Performance depends on the game and scene; a constant 60 FPS is not guaranteed.
 
@@ -89,10 +89,6 @@ Mario Tennis also received startup fixes verified during testing. This version d
 ## Moving from Vulkan test builds
 
 00.70 updates the original **NPSX00064** application and uses `/data/NPS64/saves`, `/data/NPS64/settings.cfg` and `/data/NPS64/game-settings`. The **NPSV00064** test builds used `vulkan-test-*` folders. Those saves and settings are preserved but are not migrated automatically. Back up both folders and close the application before moving files manually.
-
-## See it in action
-
-The [00.67 clips](docs/PRUEBAS-00.67.md) show several games with visible FPS counters. They were recorded in a PS4 emulator on PC; console performance can differ.
 
 ## Help improve NPS64
 

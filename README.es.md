@@ -40,14 +40,14 @@ Los juegos compatibles con Rumble Pak pueden hacer vibrar el mando. Está activa
 
 ## Idioma
 
-La **00.71** usa **inglés por defecto** (la versión publicada 00.70 usa español). En **Settings → Language**, elige **English** o **Espanol**; el cambio se aplica inmediatamente y se guarda al cerrar la app. Los ajustes antiguos conservan sus opciones y comienzan en inglés. Este ajuste cambia la interfaz de NPS64, no el idioma de las ROMs.
+La **00.72** usa **inglés por defecto**. En **Settings → Language**, elige **English** o **Espanol**; el cambio se aplica inmediatamente y se guarda al cerrar la app. Los ajustes antiguos conservan sus opciones y comienzan en inglés. Este ajuste cambia la interfaz de NPS64, no el idioma de las ROMs.
 
 
-## Trucos (prueba experimental 00.33)
+## Trucos (experimental)
 
-La prueba incluye la base GameShark de Mupen64Plus y busca códigos por CRC de cabecera y región de la ROM, no por nombre de archivo. Abre **Ajustes del juego → Trucos** desde la biblioteca o **Trucos** en la pausa **L3 + R3**. **X** activa/desactiva, **L1/R1** cambia de página, **Cuadrado** desactiva todos y **Círculo** vuelve. Durante la partida, **R2** funciona como botón GameShark para los códigos que lo requieran.
+La versión **00.72** incluye la base GameShark de Mupen64Plus y busca códigos por CRC de cabecera y región de la ROM, no por nombre de archivo. Abre **Ajustes del juego → Trucos** desde la biblioteca o **Trucos** en la pausa **L3 + R3**. **X** activa/desactiva, **L1/R1** cambia de página, **Cuadrado** desactiva todos y **Círculo** vuelve. Durante la partida, **R2** funciona como botón GameShark para los códigos que lo requieran.
 
-Todos comienzan desactivados. La selección se guarda por ROM; las variantes son excluyentes y se permiten hasta 32 activos. Se incluyen opciones de parámetros y se omiten 29 entradas incompatibles o mal formadas. Algunos códigos requieren reiniciar el juego; desactivarlos no revierte todos los cambios, incluidos los guardados por el juego. No se modifica el archivo de la ROM. Esta función aún no forma parte del PKG público 00.71.
+Todos comienzan desactivados. La selección se guarda por ROM; las variantes son excluyentes y se permiten hasta 32 activos. Se incluyen opciones de parámetros y se omiten 29 entradas incompatibles o mal formadas. Algunos códigos requieren reiniciar el juego; desactivarlos no revierte todos los cambios, incluidos los guardados por el juego. No se modifica el archivo de la ROM.
 
 ## Actualizaciones
 
@@ -71,7 +71,7 @@ El menú muestra el progreso de la descarga. Cuando termine, instala el nuevo PK
 - [x] Búsqueda automática y manual de actualizaciones.
 - [x] Descarga de actualizaciones en `/data/pkg`, con comprobación de integridad.
 - [ ] Instalación de actualizaciones desde la propia aplicación.
-- [ ] Mejorar la compatibilidad y el rendimiento en juegos exigentes.
+- [x] Mejorar la compatibilidad y el rendimiento en juegos exigentes.
 - [x] Renderizado Vulkan con Mesa RADV, probado en PS4 física.
 - [x] Resolución interna nativa o 2×, guardada por juego.
 - [x] Configuración desde la biblioteca y selección de información/FPS en pantalla.
@@ -89,10 +89,6 @@ Mario Tennis también recibió correcciones de arranque, comprobadas durante las
 ## Paso desde las versiones de prueba Vulkan
 
 La 00.70 actualiza la aplicación original **NPSX00064** y utiliza `/data/NPS64/saves`, `/data/NPS64/settings.cfg` y `/data/NPS64/game-settings`. Las versiones de prueba **NPSV00064** usaban carpetas `vulkan-test-*`; esas partidas y configuraciones se conservan y no se migran automáticamente. Antes de trasladarlas manualmente, respalda ambas carpetas y cierra la aplicación.
-
-## Mira cómo funciona
-
-Los [clips de la versión 00.67](docs/PRUEBAS-00.67.md) muestran varios juegos con los FPS visibles. Están grabados en un emulador de PS4 en PC; el rendimiento en una consola puede ser diferente.
 
 ## Ayúdanos a mejorar
 

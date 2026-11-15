@@ -10,7 +10,7 @@ p.add_argument('--public-release',action='store_true')
 p.add_argument('--reference-work',type=Path,required=True)
 p.add_argument('--sdk',type=Path,required=True)
 args=p.parse_args();work=args.reference_work.resolve();sdk=args.sdk.resolve()
-version='00.71' if args.public_release else '00.35'
+version='00.72' if args.public_release else '00.35'
 build=ROOT/'build/gpu-game-test';stage=build/'stage';(stage/'sce_sys/about').mkdir(parents=True,exist_ok=True)
 (stage/'sce_module').mkdir(exist_ok=True)
 env=dict(os.environ,OO_PS4_TOOLCHAIN=str(sdk),DOTNET_SYSTEM_GLOBALIZATION_INVARIANT='1')
