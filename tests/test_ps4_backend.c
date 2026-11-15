@@ -35,12 +35,12 @@ uint32_t sceSysmoduleLoadModuleInternal(enum OrbisSysModuleInternal id) {
     if(getenv("TEST_MODULE_DENIED") && id==ORBIS_SYSMODULE_INTERNAL_USER_SERVICE)return 0x805a1000;
     modules_loaded|=module_bit(id);return 0;
 }
-#ifdef NPS64_GPU
+#if defined(NPS64_GPU) && !defined(NPS64_GPU_GAME_TEST)
 #define TEST_SCANOUT_BUFFERS 2
 #else
 #define TEST_SCANOUT_BUFFERS 3
 #endif
-static void *scanout[TEST_SCANOUT_BUFFERS],*mapped;
+static void *scanout[TEST_SCANOUT_BUFFERS+3],*mapped;
 static unsigned queued_buffers[2],queue_count;
 static uint64_t queued_due[2],queued_hash[2],displayed_hash;
 static int64_t queued_frames[2];
@@ -87,7 +87,11 @@ int32_t sceVideoOutClose(int32_t v) {return 0;}
 int32_t sceVideoOutAddFlipEvent(OrbisKernelEqueue q,int32_t v,void *p) {return 0;}
 int32_t sceVideoOutSetFlipRate(int32_t h,int32_t r) {return 0;}
 void sceVideoOutSetBufferAttribute(void *a,uint32_t p,uint32_t t,uint32_t r,uint32_t w,uint32_t h,uint32_t s) {}
-int32_t sceVideoOutRegisterBuffers(int32_t h,int32_t start,void *const *b,int32_t n,const OrbisVideoOutBufferAttribute *a) {assert(n==TEST_SCANOUT_BUFFERS);for(int i=0;i<n;i++)scanout[i]=b[i];return 0;}
+int32_t sceVideoOutRegisterBuffers(int32_t h,int32_t start,void *const *b,int32_t n,const OrbisVideoOutBufferAttribute *a) {
+#ifdef NPS64_GPU_PRESENT_TEST
+if(start==TEST_SCANOUT_BUFFERS){if(getenv("TEST_GPU_REGISTER_DENIED"))return -1;assert(n==3);for(int i=0;i<n;i++)scanout[start+i]=b[i];return 1;}
+#endif
+assert(n==TEST_SCANOUT_BUFFERS);for(int i=0;i<n;i++)scanout[i]=b[i];return 0;}
 int32_t sceVideoOutUnregisterBuffers(int32_t h,int n) {return 0;}
 static void retire_flips(void) {
     check_scanout_retained();
@@ -102,7 +106,7 @@ static void retire_flips(void) {
 }
 int32_t sceVideoOutSubmitFlip(int32_t h,int32_t b,uint32_t mode,int64_t f) {
     retire_flips();assert(queue_count<TEST_SCANOUT_BUFFERS-1);
-    assert(b>=0 && b<TEST_SCANOUT_BUFFERS && b!=displayed_buffer);
+    assert(b>=0 && b<TEST_SCANOUT_BUFFERS+3 && b!=displayed_buffer);
     for(unsigned i=0;i<queue_count;i++)assert(queued_buffers[i]!=(unsigned)b);
     submitted=f;
     uint64_t due=(clock_us/16667+1)*16667;
@@ -195,6 +199,24 @@ int main(void) {
     else assert(cpu_priority==450 && cpu_priority_requests==1);
     uint32_t *canvas=platform_framebuffer();
     assert(canvas!=scanout[0] && canvas!=scanout[1]);
+#ifdef NPS64_GPU_PRESENT_TEST
+    void *gpu_pixels[3];for(unsigned i=0;i<3;i++)assert(!posix_memalign(&gpu_pixels[i],256,SCREEN_W*SCREEN_H*4));
+    bool registered=platform_gpu_scanout_register(gpu_pixels);
+    if(getenv("TEST_GPU_REGISTER_DENIED")){assert(!registered);assert(platform_framebuffer()==canvas);assert(platform_present());}
+    else {
+        assert(registered);
+        for(unsigned i=0;i<120;i++){
+            unsigned index=i%3;assert(platform_gpu_scanout_acquire(gpu_pixels[index]));
+            check_scanout_retained();memset(gpu_pixels[index],(int)i,SCREEN_W*SCREEN_H*4);
+            assert(platform_gpu_scanout_select(gpu_pixels[index]));assert(platform_framebuffer()==gpu_pixels[index]);
+            platform_text(0,0,"HUD",0xffffffff,1);assert(platform_present());assert(platform_framebuffer()==canvas);
+            if(i%13==0){canvas[0]=i;assert(platform_present());}
+        }
+        assert(platform_gpu_scanout_unregister());check_scanout_retained();assert(platform_framebuffer()==canvas);
+    }
+    for(unsigned i=0;i<3;i++)free(gpu_pixels[i]);
+    platform_shutdown();nps64_log_close();puts("PASS: external GPU scanout, no writes to pending/displayed buffers, CPU menu transitions, retirement and registration fallback");return 0;
+#endif
     if(getenv("TEST_FLIP_JITTER")) {
         /* Variable emulation cost: slow VI followed by a cheap VI, mean
            18.5 ms. Exercise actual buffer reuse and a 50 Hz frontend clock. */

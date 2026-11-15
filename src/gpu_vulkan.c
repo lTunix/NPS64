@@ -2,6 +2,9 @@
  * transfers the native GPU scanout to the existing cached canvas/VideoOut.
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "gpu.h"
+#ifdef NPS64_GPU_PRESENT_TEST
+#include "gpu_presenter.h"
+#endif
 #include "log.h"
 #include "platform.h"
 #include <libretro_vulkan.h>
@@ -40,6 +43,10 @@ static struct {
     void *pixels;
     VkDeviceSize capacity;
     bool coherent,reset_called,failed,first_frame;
+#ifdef NPS64_GPU_PRESENT_TEST
+    Nps64Presenter *presenter;bool present_attempted,present_external;
+    unsigned present_index;VkImageView image_view;
+#endif
     VkImage image;
     VkImageLayout layout;
     VkFormat format;
@@ -88,6 +95,10 @@ static void set_image(void *unused,const struct retro_vulkan_image *image,uint32
                       const VkSemaphore *semaphores,uint32_t family) {
     (void)unused;
     if(!image || count>8){g.failed=true;return;}
+#ifdef NPS64_GPU_PRESENT_TEST
+    nps64_presenter_invalidate(g.presenter);
+    g.image_view=image->image_view;
+#endif
     g.image=image->create_info.image;g.layout=image->image_layout;g.format=image->create_info.format;
     g.source_family=family;g.wait_count=count;
     if(count)memcpy(g.waits,semaphores,count*sizeof(*semaphores));
@@ -350,6 +361,61 @@ bool nps64_gpu_readback(const void **pixels,unsigned width,unsigned height) {
     }
     return true;
 }
+int nps64_gpu_present(unsigned width,unsigned height,bool wide,bool filtered) {
+#ifndef NPS64_GPU_PRESENT_TEST
+    (void)width;(void)height;(void)wide;(void)filtered;return 0;
+#else
+    if(nps64_gpu_failed())return -1;
+    if(!g.image||!g.image_view||!width||!height||width>4096||height>4096||g.format!=VK_FORMAT_R8G8B8A8_UNORM)return 0;
+    if(!g.present_attempted){
+        g.present_attempted=true;
+        g.presenter=nps64_presenter_create(g.context.gpu,g.context.device,g.gipa,g.instance,g.gdpa);
+        if(g.presenter&&platform_gpu_scanout_register){
+            void *pixels[3];for(unsigned i=0;i<3;i++)pixels[i]=nps64_presenter_pixels(g.presenter,i);
+            g.present_external=platform_gpu_scanout_register(pixels);
+        }
+#ifdef __ORBIS__
+        /* Do not ship a potentially slower GPU+CPU-copy hybrid on console.
+         * A rejected external registration keeps the validated legacy path. */
+        if(g.presenter&&!g.present_external){nps64_presenter_destroy(g.presenter);g.presenter=NULL;}
+#endif
+        nps64_log("[gpu-present] enabled=%u direct_videoout=%u FullSync=unchanged\n",g.presenter!=NULL,g.present_external);
+    }
+    if(!g.presenter)return 0;
+    double started=platform_time();
+    void *pixels=nps64_presenter_pixels(g.presenter,g.present_index);
+    if(g.present_external&&(!platform_gpu_scanout_acquire||!platform_gpu_scanout_acquire(pixels))){g.failed=true;return -1;}
+    double acquired=platform_time();
+    if(!check(fn_ResetCommandPool(g.context.device,g.pool,0),"present reset pool"))return -1;
+    VkCommandBufferBeginInfo begin={.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,.flags=VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+    if(!check(fn_BeginCommandBuffer(g.command,&begin),"present begin"))return -1;
+    uint32_t src=g.source_family,dst=g.context.queue_family_index;
+    if(src==VK_QUEUE_FAMILY_IGNORED||src==dst)src=dst=VK_QUEUE_FAMILY_IGNORED;
+    VkImageMemoryBarrier image={.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,.srcAccessMask=VK_ACCESS_MEMORY_WRITE_BIT,.dstAccessMask=VK_ACCESS_SHADER_READ_BIT,.oldLayout=g.layout,.newLayout=g.layout,.srcQueueFamilyIndex=src,.dstQueueFamilyIndex=dst,.image=g.image,.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1}};
+    fn_CmdPipelineBarrier(g.command,VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,0,0,NULL,0,NULL,1,&image);
+    if(!nps64_presenter_record(g.presenter,g.command,g.image_view,g.layout,g.present_index,width,height,wide,filtered)){g.failed=true;return -1;}
+    image.srcAccessMask=VK_ACCESS_SHADER_READ_BIT;image.dstAccessMask=VK_ACCESS_MEMORY_READ_BIT;image.srcQueueFamilyIndex=dst;image.dstQueueFamilyIndex=src;
+    fn_CmdPipelineBarrier(g.command,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,0,0,NULL,0,NULL,1,&image);
+    if(!check(fn_EndCommandBuffer(g.command),"present end")||!check(fn_ResetFences(g.context.device,1,&g.fence),"present reset fence"))return -1;
+    VkPipelineStageFlags stages[8];for(unsigned i=0;i<g.wait_count;i++)stages[i]=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    VkCommandBuffer commands[9];memcpy(commands,g.extra_commands,g.extra_count*sizeof(*commands));commands[g.extra_count]=g.command;
+    VkSubmitInfo submit={.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO,.waitSemaphoreCount=g.wait_count,.pWaitSemaphores=g.waits,.pWaitDstStageMask=stages,.commandBufferCount=g.extra_count+1,.pCommandBuffers=commands,.signalSemaphoreCount=g.signal?1:0,.pSignalSemaphores=&g.signal};
+    double recorded=platform_time();
+    lock_queue(NULL);VkResult result=fn_QueueSubmit(g.context.queue,1,&submit,g.fence);unlock_queue(NULL);
+    double submitted=platform_time();
+    if(!check(result,"present submit")||!check(fn_WaitForFences(g.context.device,1,&g.fence,VK_TRUE,5000000000ULL),"present wait"))return -1;
+    double completed=platform_time();
+    g.wait_count=g.extra_count=0;g.signal=VK_NULL_HANDLE;
+    if(g.present_external){if(!platform_gpu_scanout_select||!platform_gpu_scanout_select(pixels)){g.failed=true;return -1;}}
+    else memcpy(platform_framebuffer(),pixels,1280*720*4);
+    if(!g.first_frame){g.first_frame=true;nps64_log("[gpu] first scanout %ux%u GPU compositor fence completed\n",width,height);}
+    if(g.scanout_width!=width||g.scanout_height!=height){g.scanout_width=width;g.scanout_height=height;nps64_log("[gpu] scanout geometry %ux%u RGBA format=%u\n",width,height,g.format);}
+    gpu_perf.compositions++;gpu_perf.compose_acquire_seconds+=acquired-started;
+    gpu_perf.compose_record_seconds+=recorded-acquired;gpu_perf.compose_submit_seconds+=submitted-recorded;
+    gpu_perf.compose_wait_seconds+=completed-submitted;gpu_perf.compose_copy_seconds+=platform_time()-completed;
+    g.present_index=(g.present_index+1)%3;return 1;
+#endif
+}
 bool nps64_gpu_failed(void) {
 #if defined(__ORBIS__) && defined(NPS64_GPU_GAME_TEST)
     return g.failed || nps64_pipeline_guard_failed();
@@ -364,6 +430,10 @@ void nps64_gpu_close(void) {
     nps64_gpu_destroy_context();
     if(g.context.device && fn_DestroyDevice) {
         if(fn_DeviceWaitIdle)fn_DeviceWaitIdle(g.context.device);
+#ifdef NPS64_GPU_PRESENT_TEST
+        if(g.present_external&&platform_gpu_scanout_unregister)platform_gpu_scanout_unregister();
+        nps64_presenter_destroy(g.presenter);g.presenter=NULL;
+#endif
         free_buffer();
         if(g.fence)fn_DestroyFence(g.context.device,g.fence,NULL);
         if(g.pool)fn_DestroyCommandPool(g.context.device,g.pool,NULL);

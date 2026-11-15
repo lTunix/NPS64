@@ -34,6 +34,10 @@ static int video=-1,audio=-1,active;
 static int64_t frame=1;
 static int64_t pending_flip;
 static uint32_t *canvas;
+#ifdef NPS64_GPU_PRESENT_TEST
+static void *gpu_scanout[3];static int gpu_buffer_set=-1,gpu_selected=-1;
+static int64_t gpu_retire[3];static uint32_t *cpu_canvas;
+#endif
 #if defined(NPS64_GPU) && !defined(NPS64_GPU_GAME_TEST)
 #define SCANOUT_BUFFERS 2
 #else
@@ -262,6 +266,39 @@ static bool wait_flip(int64_t required) {
     }
     return true;
 }
+#ifdef NPS64_GPU_PRESENT_TEST
+bool platform_gpu_scanout_register(void *const pixels[3]) {
+    if(video<0||gpu_buffer_set>=0)return false;
+    for(unsigned i=0;i<3;i++)if(!pixels[i]||((uintptr_t)pixels[i]&255))return false;
+    OrbisVideoOutBufferAttribute attr={0};
+    sceVideoOutSetBufferAttribute(&attr,0x80000000,1,0,SCREEN_W,SCREEN_H,SCREEN_W);
+    int result=sceVideoOutRegisterBuffers(video,SCANOUT_BUFFERS,pixels,3,&attr);
+    nps64_log("[gpu-scanout] register result=%d coherent=1 buffers=3\n",result);
+    if(result<0)return false;
+    gpu_buffer_set=result;cpu_canvas=canvas;
+    for(unsigned i=0;i<3;i++){gpu_scanout[i]=pixels[i];gpu_retire[i]=0;}return true;
+}
+bool platform_gpu_scanout_acquire(void *pixels) {
+    if(gpu_buffer_set<0)return false;
+    for(unsigned i=0;i<3;i++)if(pixels==gpu_scanout[i])
+        return wait_flip(frame-(SCANOUT_BUFFERS-1))&&wait_flip(gpu_retire[i]);
+    return false;
+}
+bool platform_gpu_scanout_select(void *pixels) {
+    if(gpu_buffer_set<0)return false;
+    for(unsigned i=0;i<3;i++)if(pixels==gpu_scanout[i]){gpu_selected=(int)i;canvas=pixels;return true;}
+    return false;
+}
+bool platform_gpu_scanout_unregister(void) {
+    if(gpu_buffer_set<0)return true;
+    canvas=cpu_canvas;gpu_selected=-1;
+    /* Replace a currently displayed external buffer before freeing GPU memory. */
+    bool ok=platform_present()&&wait_flip(pending_flip);
+    if(ok)ok=sceVideoOutUnregisterBuffers(video,gpu_buffer_set)>=0;
+    if(!ok){nps64_log("[gpu-scanout] retirement failed; closing VideoOut before freeing memory\n");sceVideoOutClose(video);video=-1;buffers_registered=false;}
+    gpu_buffer_set=-1;cpu_canvas=NULL;memset(gpu_scanout,0,sizeof gpu_scanout);return ok;
+}
+#endif
 bool platform_present(void) {
     /* With three buffers, copy the next frame while one flip is pending.
        A buffer submitted at frame-N is reusable only after frame-N+1 is
@@ -271,10 +308,23 @@ bool platform_present(void) {
     double started=platform_time();
     if(!wait_flip(frame-(SCANOUT_BUFFERS-1))) return false;
     double ready=platform_time();
+#ifdef NPS64_GPU_PRESENT_TEST
+    bool external=gpu_selected>=0;
+    if(!external)
+#endif
     nps64_scanout_copy(buffers[active],canvas,SCREEN_W*SCREEN_H*4);
     double copied=platform_time();
     wait_seconds+=ready-started;copy_seconds+=copied-ready;samples++;
-    if(sceVideoOutSubmitFlip(video,active,ORBIS_VIDEO_OUT_FLIP_VSYNC,frame)<0) return false;
+#ifdef NPS64_GPU_PRESENT_TEST
+    unsigned flip_buffer=external?SCANOUT_BUFFERS+(unsigned)gpu_selected:(unsigned)active;
+    __asm__ volatile("sfence" ::: "memory");
+#else
+    unsigned flip_buffer=(unsigned)active;
+#endif
+    if(sceVideoOutSubmitFlip(video,flip_buffer,ORBIS_VIDEO_OUT_FLIP_VSYNC,frame)<0) return false;
+#ifdef NPS64_GPU_PRESENT_TEST
+    if(external){gpu_retire[gpu_selected]=frame+1;canvas=cpu_canvas;gpu_selected=-1;}
+#endif
     pending_flip=frame++;
     active=(active+1)%SCANOUT_BUFFERS;
     if(samples==60){
@@ -383,6 +433,9 @@ void platform_text(int x,int y,const char *text,uint32_t color,int scale) {
 }
 void platform_shutdown(void) {
     platform_rumble_clear();
+#ifdef NPS64_GPU_PRESENT_TEST
+    platform_gpu_scanout_unregister();
+#endif
     free(canvas);canvas=NULL;
     for(int i=0;i<4;i++) if(handles[i]>=0) scePadClose(handles[i]);
     if(audio_thread_started) {

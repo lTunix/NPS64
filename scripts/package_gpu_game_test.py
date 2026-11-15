@@ -4,11 +4,12 @@ from pathlib import Path
 import argparse, hashlib, json, os, shutil, struct, subprocess
 ROOT=Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser(description=__doc__)
+p.add_argument('--gpu-present',action='store_true')
 p.add_argument('--public-release',action='store_true')
 p.add_argument('--reference-work',type=Path,required=True)
 p.add_argument('--sdk',type=Path,required=True)
 args=p.parse_args();work=args.reference_work.resolve();sdk=args.sdk.resolve()
-version='00.71' if args.public_release else '00.31'
+version='00.71' if args.public_release else '00.32'
 build=ROOT/'build/gpu-game-test';stage=build/'stage';(stage/'sce_sys/about').mkdir(parents=True,exist_ok=True)
 (stage/'sce_module').mkdir(exist_ok=True)
 env=dict(os.environ,OO_PS4_TOOLCHAIN=str(sdk),DOTNET_SYSTEM_GLOBALIZATION_INVARIANT='1')
@@ -37,11 +38,11 @@ for source,dest in [(ROOT/'LICENSE','LICENSE.txt'),(ROOT/'docs/CREDITS.md','CRED
     'Presentation optimization: exact SSSE3 signed-difference edge interpolation; RDP/VI/FullSync timings; contiguous SIMD rows for 1280 to 960 and equal-width output, exact half-phase averaging, SSSE3 channel conversion; original pixel values preserved.\n'
     'Vulkan staging pixels are borrowed until the next video callback, eliminating the redundant frontend snapshot copy. Resolution changes during pause are saved for next game load.\n'
     'Presentation quality test: centered bilinear scaling to the game rectangle; Selectable native/2x Vulkan internal rendering, saved per ROM; VI AA retained. Filtro VI preciso enables smoothing; rapido restores nearest presentation. Native texture LOD and native TEX_RECT retained to preserve texture selection and 2D sprites.\n'
-    'Library/settings 00.31: 16:9 HD menu with downloaded covers, global HUD modes and per-ROM aspect/VI/Pak/state slot.\n'
+    'Library/settings 00.32: 16:9 HD menu with downloaded covers, global HUD modes and per-ROM aspect/VI/Pak/state slot.\n'
     'Audio continuity test: cumulative per-field DAC budget avoids inserting silence for two-frame AI_LEN delivery quantization. Direct FIFO retained; overlap-add/time stretching disabled. Already resampled PCM is copied unchanged to AudioOut. Large buffer retained; extended HLE voice filter disabled for isolation.\n'
     'Audio quality comparison: original microcode voice interpolation; avoids extended FIR reading neighboring scratch data. Large buffer retained from 00.18; output uses the direct FIFO comparison described above.\n'
     'Audio buffer comparison: 16384 frames capacity, 11520 prefill, no occupancy servo at 48 kHz. More audio latency; final sinc32 resampling retained.\n'
-    'Experimental Vulkan game test 00.31: general split rasterizer on GPU while specialized variants compile in background.\n'
+    'Experimental Vulkan game test 00.32: general split rasterizer on GPU while specialized variants compile in background.\n'
     'Works without shader history or a second launch. Prepares the finite general pipeline at startup, not ROM-specific recipes.\n'
     'Opaque RADV binary restore and saved recipe prewarm are disabled. Existing caches, recipes and saves are preserved.\n'
     'ACO_DEBUG=nosched reduces general-shader register pressure; all resource guards and 8 MiB compiler stacks remain.\n'
@@ -50,10 +51,13 @@ for source,dest in [(ROOT/'LICENSE','LICENSE.txt'),(ROOT/'docs/CREDITS.md','CRED
     'PS4 correctness, frame pacing and performance require hardware testing before any release.\n'
     'Keeps three VideoOut buffers, cached readback and 600-second session pause. X: normal launch.\n'
     'Reads /data/NPS64/games; isolated saves: /data/NPS64/vulkan-test-saves.\n'
-    'Main log: /data/NPS64/vulkan-game-test.log; fatal log: /data/NPS64/vulkan-game-crash-00.31.log.\n'
+    'Main log: /data/NPS64/vulkan-game-test.log; fatal log: /data/NPS64/vulkan-game-crash-00.32.log.\n'
     'Tennis USA/VC boot passed native testing; PS4 validation pending. Audio uses direct FIFO after sinc32 in this comparison. No ROMs included. No GitHub release.\n')
+if args.gpu_present:
+    notes=stage/'TEST-NOTES.txt'
+    notes.write_text('00.32 experimental GPU compositor: exact Q8 bilinear/nearest, BGRA conversion and borders run in a compute shader. Three coherent cached Vulkan buffers are offered to VideoOut, with retirement before reuse/free. On PS4, registration failure disables GPU composition and retains legacy readback/scaling; host tests can copy composited output to the legacy canvas. FullSync, RDP rasterization, core archive and audio unchanged. Pipeline/descriptors/buffers are persistent. Additional GPU timing and slow-frame diagnostics. PS4 validation required; not a public release.\n'+notes.read_text())
 if args.public_release:
-    (stage/'TEST-NOTES.txt').write_text('NPS64 '+version+' — public Vulkan build based on hardware-validated diagnostic 00.31. Original app identity, updater enabled, no diagnostic time limit. Saves: /data/NPS64/saves; settings: /data/NPS64/settings.cfg. Diagnostic saves remain untouched in /data/NPS64/vulkan-test-saves. No ROMs included. See README and release notes for compatibility and validation.\n')
+    (stage/'TEST-NOTES.txt').write_text('NPS64 '+version+' — public Vulkan build based on hardware-validated diagnostic 00.32. Original app identity, updater enabled, no diagnostic time limit. Saves: /data/NPS64/saves; settings: /data/NPS64/settings.cfg. Diagnostic saves remain untouched in /data/NPS64/vulkan-test-saves. No ROMs included. See README and release notes for compatibility and validation.\n')
 from PIL import Image, ImageOps
 with Image.open(ROOT/'icon.jpeg') as image:
     ImageOps.fit(image.convert('RGB'),(512,512),method=Image.Resampling.LANCZOS).save(stage/'sce_sys/icon0.png')
@@ -68,7 +72,7 @@ for key,(kind,size,value) in values.items():run([tool,'sfo_setentry',sfo,key,'--
 files=sorted(str(f.relative_to(stage)) for f in stage.rglob('*') if f.is_file() and f.suffix!='.gp4')
 run([tools/'create-gp4','-out','test.gp4','--content-id='+content,'--files',' '.join(files)],cwd=stage)
 run([tool,'pkg_build','test.gp4',ROOT/'out'],cwd=stage)
-pkg=ROOT/'out'/('NPS64-by-lTunix-'+version+'.pkg' if args.public_release else 'NPS64-Vulkan-Game-Test-00.31.pkg');shutil.copyfile(ROOT/'out'/(content+'.pkg'),pkg)
+pkg=ROOT/'out'/('NPS64-by-lTunix-'+version+'.pkg' if args.public_release else 'NPS64-Vulkan-Game-Test-00.32.pkg');shutil.copyfile(ROOT/'out'/(content+'.pkg'),pkg)
 with (build/'pkg-validation.log').open('w') as stream:run([tool,'pkg_validate','--verbose',pkg],stdout=stream)
 checks=[x for x in (build/'pkg-validation.log').read_text().splitlines() if x.startswith('[')]
 assert len(checks)>20 and all(x.startswith('[OK]') for x in checks)
@@ -93,8 +97,8 @@ def fields(data):
 staged=fields(sfo.read_bytes());packaged=fields(entry('PARAM_SFO'));assert all(packaged.get(k)==v for k,v in staged.items())
 sha=hashlib.sha256(data).hexdigest();pkg.with_suffix('.sha256').write_text(sha+'  '+pkg.name+'\n')
 manifest={'package_sha256':sha,'bytes':len(data),'core_sha256':hashlib.sha256((build/'core/parallel_n64.a').read_bytes()).hexdigest(),
-          'profile':{'version':version,'public_release':args.public_release,'title_id':'NPSX00064' if args.public_release else 'NPSV00064','deferred_vulkan_boot':True,'audio':'Original HLE voice interpolation + output sinc32 + direct FIFO','presentation':'bilinear when filtered VI is enabled','internal_resolution':'per-game native/2x','borrowed_gpu_frame':True,'async_log':True,'rdp_ring_words':65536,'skip_unchanged_sram':True,'presentation_simd':'SSSE3 + exact ratio specializations','native_texture_lod':True,'native_tex_rect':True,'audio_recovery_restart':4096,'smash_2x_overlap':False,'audio_stretch':False,'hle_voice_taps':0,'audio_capacity_frames':16384,'audio_prefill_frames':11520,'audio_target_frames':0,'sync_shader':False,'pipeline_cache':'RAM only; general split shader + asynchronous specialization', 'aco_debug':'nosched','scanout_buffers':3,'guard_sgprs':96,'session_limit_seconds':0 if args.public_release else 600},
-          'source_sha256':{name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ['src/i18n.c','src/i18n.h','src/i18n_strings.inc','scripts/patch_vulkan_ring.py','src/save_cache.h','src/cadence_stats.h','src/log.c','src/log.h','scripts/patch_vulkan_perf.py','scripts/patch_vulkan_safety.py','src/bilinear_scaler.h','src/software_scaler.h','scripts/patch_audio.py','scripts/patch_vulkan_boot.py','src/rom_compat.h','src/audio_stretch.h','src/audio_queue.h','src/audio_resampler.h','src/storage.c','src/storage.h','src/settings.c','src/settings.h','src/library_ui.c','src/library_ui.h','src/covers.c','src/covers.h','src/cover_match.c','src/update_http_ps4.c','src/input_ps4.h','scripts/package_gpu_game_test.py','src/frontend.c','src/gpu_recipes.h','src/gpu_cache_store.h','scripts/build_gpu_game_test.py','src/gpu_vulkan.c','src/platform_ps4.c','src/gpu_pipeline_guard.c','src/gpu_compile_worker.c','src/gpu_cache_store.c','src/gpu_crashlog.c','src/gpu_recipes.c','scripts/patch_vulkan_recipes.py','scripts/patch_vulkan_async.py','scripts/patch_vulkan_cache.py','scripts/trace_vulkan_core.py']},
+          'profile':{'version':version,'gpu_compositor':args.gpu_present,'public_release':args.public_release,'title_id':'NPSX00064' if args.public_release else 'NPSV00064','deferred_vulkan_boot':True,'audio':'Original HLE voice interpolation + output sinc32 + direct FIFO','presentation':'bilinear when filtered VI is enabled','internal_resolution':'per-game native/2x','borrowed_gpu_frame':True,'async_log':True,'rdp_ring_words':65536,'skip_unchanged_sram':True,'presentation_simd':'SSSE3 + exact ratio specializations','native_texture_lod':True,'native_tex_rect':True,'audio_recovery_restart':4096,'smash_2x_overlap':False,'audio_stretch':False,'hle_voice_taps':0,'audio_capacity_frames':16384,'audio_prefill_frames':11520,'audio_target_frames':0,'sync_shader':False,'pipeline_cache':'RAM only; general split shader + asynchronous specialization', 'aco_debug':'nosched','scanout_buffers':3,'guard_sgprs':96,'session_limit_seconds':0 if args.public_release else 600},
+          'source_sha256':{name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ['src/gpu_presenter.c','src/gpu_presenter.h','src/gpu_present.comp','src/gpu_present_spv.h','src/platform.h','src/gpu.h','src/i18n.c','src/i18n.h','src/i18n_strings.inc','scripts/patch_vulkan_ring.py','src/save_cache.h','src/cadence_stats.h','src/log.c','src/log.h','scripts/patch_vulkan_perf.py','scripts/patch_vulkan_safety.py','src/bilinear_scaler.h','src/software_scaler.h','scripts/patch_audio.py','scripts/patch_vulkan_boot.py','src/rom_compat.h','src/audio_stretch.h','src/audio_queue.h','src/audio_resampler.h','src/storage.c','src/storage.h','src/settings.c','src/settings.h','src/library_ui.c','src/library_ui.h','src/covers.c','src/covers.h','src/cover_match.c','src/update_http_ps4.c','src/input_ps4.h','scripts/package_gpu_game_test.py','src/frontend.c','src/gpu_recipes.h','src/gpu_cache_store.h','scripts/build_gpu_game_test.py','src/gpu_vulkan.c','src/platform_ps4.c','src/gpu_pipeline_guard.c','src/gpu_compile_worker.c','src/gpu_cache_store.c','src/gpu_crashlog.c','src/gpu_recipes.c','scripts/patch_vulkan_recipes.py','scripts/patch_vulkan_async.py','scripts/patch_vulkan_cache.py','scripts/trace_vulkan_core.py']},
           'gpu_dependencies':json.loads((ROOT/'build/compute-probe-ps4/manifest.json').read_text()),
           'stable_pkg_sha256':hashlib.sha256((ROOT/'out/NPS64-by-lTunix-00.69.pkg').read_bytes()).hexdigest()}
 (build/'manifest.json').write_text(json.dumps(manifest,indent=2))

@@ -16,6 +16,11 @@ bool platform_rumble(unsigned port,unsigned effect,uint16_t strength);
 void platform_rumble_clear(void);
 uint32_t *platform_framebuffer(void);
 bool platform_present(void);
+/* Optional Vulkan-owned coherent scanout buffers. Weak on host backends. */
+bool platform_gpu_scanout_register(void *const buffers[3]) __attribute__((weak));
+bool platform_gpu_scanout_acquire(void *pixels) __attribute__((weak));
+bool platform_gpu_scanout_select(void *pixels) __attribute__((weak));
+bool platform_gpu_scanout_unregister(void) __attribute__((weak));
 void platform_audio(const int16_t *samples, size_t frames, double sample_rate);
 void platform_audio_clear(void);
 /* Optional core hook, implemented by the PS4 backend. */

@@ -6,11 +6,13 @@ ROOT=Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--reference-work',type=Path,default=ROOT.parent/'xuperPS4/.ps4-work')
 p.add_argument('--sdk',type=Path,default=ROOT/'toolchain/OpenOrbis/PS4Toolchain')
+p.add_argument('--gpu-present',action='store_true',help='Experimental GPU compositor and Vulkan-owned VideoOut buffers')
 p.add_argument('--public-release',action='store_true',help='Build the original app identity with updater and no diagnostic session cap')
 p.add_argument('--core-only',action='store_true')
 p.add_argument('--link-only',action='store_true')
 p.add_argument('--resume-core',action='store_true')
 args=p.parse_args()
+if args.public_release and args.gpu_present:p.error("GPU presentation is test-only until PS4 validation")
 work=args.reference_work.resolve();sdk=args.sdk.resolve();gpu=work/'gpu'
 build=ROOT/'build/gpu-game-test';core=build/'core';build.mkdir(parents=True,exist_ok=True)
 env=dict(os.environ,OO_PS4_TOOLCHAIN=str(sdk),DOTNET_SYSTEM_GLOBALIZATION_INVARIANT='1')
@@ -53,10 +55,10 @@ for filename,digest in manifest['library_members'].items():
 libraries=[Path(x) for x in json.loads((gpu/'libraries.json').read_text())]
 libraries=[probe/'libamd_common.a' if x.name=='libamd_common.a' else x for x in libraries]
 objects=[]
-for unit in ['i18n','settings','library_ui','covers','cover_match','update_http_ps4',*(['updater','update_feed'] if args.public_release else []),'frontend','gpu_vulkan','gpu_pipeline_guard','gpu_compile_worker','gpu_api_trace','gpu_cache_store','gpu_recipes','gpu_crashlog','sha256','gpu_boot','platform_ps4','storage','runtime_ps4','log']:
+for unit in ['i18n','settings','library_ui','covers','cover_match','update_http_ps4',*(['updater','update_feed'] if args.public_release else []),'frontend',*(['gpu_presenter'] if args.gpu_present else []),'gpu_vulkan','gpu_pipeline_guard','gpu_compile_worker','gpu_api_trace','gpu_cache_store','gpu_recipes','gpu_crashlog','sha256','gpu_boot','platform_ps4','storage','runtime_ps4','log']:
     obj=build/(unit+'.o')
     stack_check=['-Wframe-larger-than=4096','-fstack-usage'] if unit in {'gpu_pipeline_guard','gpu_compile_worker','gpu_cache_store','gpu_recipes','gpu_crashlog','sha256'} else []
-    run([build/'cc',*(['-DNPS64_PUBLIC_RELEASE','-DNPS64_UPDATES','-DNPS64_UI_VERSION="00.71"'] if args.public_release else ['-DNPS64_UI_VERSION="00.31"']),'-DNPS64_GPU','-DNPS64_GPU_GAME_TEST','-DNPS64_AUDIO_BUFFER_TEST','-DNPS64_AUDIO_HQ_TEST','-DNPS64_AUDIO_CLEAN_TEST','-DNPS64_IMAGE_SMOOTH_TEST','-DNPS64_INTERNAL_2X_TEST','-DNPS64_GPU_BORROW_TEST','-DNPS64_AUDIO_DIRECT_TEST','-DNPS64_AUDIO_RECOVERY_TEST','-DNPS64_HD_UI','-std=c11','-O2','-Wall','-Wextra','-Werror',
+    run([build/'cc',*(['-DNPS64_GPU_PRESENT_TEST'] if args.gpu_present else []),*(['-DNPS64_PUBLIC_RELEASE','-DNPS64_UPDATES','-DNPS64_UI_VERSION="00.71"'] if args.public_release else ['-DNPS64_UI_VERSION="00.32"']),'-DNPS64_GPU','-DNPS64_GPU_GAME_TEST','-DNPS64_AUDIO_BUFFER_TEST','-DNPS64_AUDIO_HQ_TEST','-DNPS64_AUDIO_CLEAN_TEST','-DNPS64_IMAGE_SMOOTH_TEST','-DNPS64_INTERNAL_2X_TEST','-DNPS64_GPU_BORROW_TEST','-DNPS64_AUDIO_DIRECT_TEST','-DNPS64_AUDIO_RECOVERY_TEST','-DNPS64_HD_UI','-std=c11','-O2','-Wall','-Wextra','-Werror',
          *stack_check,*(['-DNPS64_LOG_ASYNC'] if unit=='log' else []),*(['-mssse3'] if unit=='frontend' else []),*(['-Wno-unused-function'] if unit=='covers' else []),
          '-I'+str(ROOT/'src'),'-I'+str(core/'libretro-common/include'),
          '-I'+str(core/'mupen64plus-core/src/api'),
@@ -70,4 +72,4 @@ run([work/'llvm/usr/bin/ld.lld-18','-m','elf_x86_64','-pie','-z','max-page-size=
      '--whole-archive',*libraries,'--no-whole-archive','-lc++','-lc++abi','-lunwind','-lc','-lm','-lkernel',
      '-lSceLibcInternal','-lSceGnmDriver','-lSceVideoOut','-lScePad','-lSceUserService','-lSceAudioOut',
      '-lSceNet','-lSceSsl','-lSceHttp','-lSceSystemService','-lSceSysmodule','--end-group','-o',build/'nps64.elf'])
-run(['python3',ROOT/'scripts/package_gpu_game_test.py','--reference-work',work,'--sdk',sdk,*(['--public-release'] if args.public_release else [])])
+run(['python3',ROOT/'scripts/package_gpu_game_test.py','--reference-work',work,'--sdk',sdk,*(['--public-release'] if args.public_release else []),*(['--gpu-present'] if args.gpu_present else [])])

@@ -91,6 +91,9 @@ static bool diagnostic_hle=true;
 static bool filtered_vi=true;
 static unsigned resolution_mode=1,resolution_next=1;
 static bool use_jit,use_gpu,native_rgba;
+#ifdef NPS64_GPU_PRESENT_TEST
+static bool gpu_prepared,gpu_fresh,gpu_wide,gpu_filtered;
+#endif
 static unsigned requested_gpu=1;
 static unsigned requested_cpu=1; /* 0 cached interpreter, 1 checked Ari64 JIT */
 extern int nps64_core_jit_supported(void);
@@ -227,6 +230,14 @@ static void video_refresh(const void *data,unsigned width,unsigned height,size_t
 #ifdef NPS64_GPU_BORROW_TEST
     if(hardware){native_borrowed=NULL;native_width=native_height=0;}
 #endif
+#ifdef NPS64_GPU_PRESENT_TEST
+    if(hardware){
+        int result=nps64_gpu_present(width,height,widescreen,filtered_vi);
+        gpu_prepared=result==1;gpu_fresh=result==1;gpu_wide=widescreen;gpu_filtered=filtered_vi;
+        if(result<0){core_shutdown=true;notify(nps64_tr("Error Vulkan. Consulta nps64.log"));return;}
+        if(result==1){native_width=width;native_height=height;video_frames++;if(!first_video){first_video=true;nps64_log("[load] first_video %ux%u storage=gpu-composited\n",width,height);}return;}
+    }else gpu_prepared=false;
+#endif
     if(hardware) {
         if(!nps64_gpu_readback(&data,width,height)) {
             if(nps64_gpu_failed()) {core_shutdown=true;notify(nps64_tr("Error Vulkan. Consulta nps64.log"));}
@@ -272,6 +283,16 @@ void nps64_hle_cpu_video(const void *data,unsigned width,unsigned height,size_t 
 #include "bilinear_scaler.h"
 #endif
 static void game_video_draw(void) {
+#ifdef NPS64_GPU_PRESENT_TEST
+    if(gpu_prepared){
+        if(gpu_fresh&&gpu_wide==widescreen&&gpu_filtered==filtered_vi){gpu_fresh=false;goto composed;}
+        int result=nps64_gpu_present(native_width,native_height,widescreen,filtered_vi);
+        if(result!=1){core_shutdown=true;return;}gpu_fresh=false;gpu_wide=widescreen;gpu_filtered=filtered_vi;
+composed:
+        if(!visible_video){const uint32_t *pixels=platform_framebuffer();for(unsigned i=0;i<SCREEN_W*SCREEN_H;i+=64)if(pixels[i]&0x00ffffff){visible_video=true;nps64_log("[load] first_visible_video frame=%llu\n",(unsigned long long)core_frames);break;}}
+        return;
+    }
+#endif
     uint32_t *out=platform_framebuffer();
     if(!native_width || !native_height) {memset(out,0,SCREEN_W*SCREEN_H*4);return;}
     unsigned width=native_width,height=native_height;
@@ -625,6 +646,9 @@ static bool start_game(void) {
     nps64_log("[pipeline-cache-policy] raw_binary_restore=0 portable_recipes=0 hybrid_async=1\n");
 
 #endif
+#ifdef NPS64_GPU_PRESENT_TEST
+    gpu_prepared=gpu_fresh=false;
+#endif
     nps64_save_cache_reset(&sram_cache);
     current=games[selected]; core_shutdown=false; options_dirty=false; ram_writes_allowed=true;
     core_frames=video_frames=0; first_video=false; visible_video=false;native_width=native_height=0;native_borrowed=NULL;game_fps=video_fps=0;
@@ -710,6 +734,9 @@ static void stop_game(void) {
 #endif
     platform_rumble_clear();
     bool saved=save_ram(); retro_unload_game(); nps64_gpu_destroy_context(); retro_deinit(); nps64_gpu_close();use_gpu=false; running=false; paused=false; native_borrowed=NULL;native_width=native_height=0;platform_audio_clear();
+#ifdef NPS64_GPU_PRESENT_TEST
+    gpu_prepared=gpu_fresh=false;
+#endif
     nps64_save_cache_reset(&sram_cache);
     notify(!ram_writes_allowed?nps64_tr("Partida original conservada: revisa el registro"):saved?nps64_tr("Partida guardada. Selecciona otro juego"):nps64_tr("No se pudo guardar la partida. Revisa espacio en /data"));
     apply_game_settings(&preferences.defaults);
@@ -881,8 +908,8 @@ int main(void) {
     nps64_log("NPS64 by lTunix " NPS64_VERSION "; Vulkan; synchronous FullSync; audio recovery; no session cap\n");
 #elif defined(NPS64_GPU_GAME_TEST)
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.31.log");
-    nps64_log("NPS64 Vulkan Game Test 00.31; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.32.log");
+    nps64_log("NPS64 Vulkan Game Test 00.32; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
@@ -891,11 +918,11 @@ int main(void) {
 #elif defined(NPS64_HLE_GAME)
     nps64_log("NPS64 00.38 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
-    nps64_log("NPS64 00.31 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
+    nps64_log("NPS64 00.32 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.31 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.32 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.31 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.32 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
@@ -1250,6 +1277,9 @@ present_frame:
             nps64_log("[log-queue] async=%u dropped=%u\n",nps64_log_async()!=0,nps64_log_dropped());
             nps64_log("[pacing] debt_clamps=%u core_peak_ms=%.3f rdp_peak_ms=%.3f\n",pace_clamps,1000*core_peak,1000*rdp_peak);
             Nps64GpuPerf transfer;nps64_gpu_perf_take(&transfer);
+            if(transfer.compositions){double scale=1000.0/perf_samples;
+                nps64_log("[gpu-present-times] loops=%u compositions=%llu acquire_ms=%.3f record_ms=%.3f submit_ms=%.3f fence_wait_ms=%.3f cpu_copy_ms=%.3f units=wall_ms_per_loop\n",perf_samples,(unsigned long long)transfer.compositions,scale*transfer.compose_acquire_seconds,scale*transfer.compose_record_seconds,scale*transfer.compose_submit_seconds,scale*transfer.compose_wait_seconds,scale*transfer.compose_copy_seconds);
+            }
             if(transfer.readbacks) {
                 double scale=1000.0/perf_samples;
                 nps64_log("[vulkan-times] loops=%u readbacks=%llu record_ms=%.3f submit_ms=%.3f fence_wait_ms=%.3f invalidate_ms=%.3f readback_ms=%.3f snapshot_ms=%.3f core_other_ms=%.3f units=wall_ms_per_loop\n",

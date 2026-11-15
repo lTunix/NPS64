@@ -1,0 +1,24 @@
+#version 450
+layout(local_size_x=8,local_size_y=8) in;
+layout(set=0,binding=0) uniform sampler2D source_image;
+layout(set=0,binding=1,std430) writeonly buffer Output { uint pixels[]; };
+layout(push_constant) uniform Params { uint width,height,out_width,out_height,left,top,filtered,stride; } p;
+uvec3 fetch_rgb(ivec2 pos){return uvec3(texelFetch(source_image,pos,0).rgb*255.0+0.5);}
+uvec3 blend(uvec3 a,uvec3 b,uint f){return (a*(256u-f)+b*f+128u)>>8;}
+ivec2 position(uint x,uint source,uint target){int v=int(((2u*x+1u)*source*128u)/target)-128;v=clamp(v,0,int((source-1u)*256u));return ivec2(v>>8,v&255);}
+void main(){
+ uvec2 xy=gl_GlobalInvocationID.xy;if(xy.x>=p.stride||xy.y>=720u)return;
+ uint color=0xff000000u;
+ if(xy.x>=p.left&&xy.x<p.left+p.out_width&&xy.y>=p.top&&xy.y<p.top+p.out_height){
+  uint x=xy.x-p.left,y=xy.y-p.top;uvec3 c;
+  if(p.filtered!=0u){
+   ivec2 a=position(x,p.width,p.out_width),b=position(y,p.height,p.out_height);
+   int nx=min(a.x+1,int(p.width)-1),ny=min(b.x+1,int(p.height)-1);
+   uvec3 top=blend(fetch_rgb(ivec2(a.x,b.x)),fetch_rgb(ivec2(nx,b.x)),uint(a.y));
+   uvec3 bottom=blend(fetch_rgb(ivec2(a.x,ny)),fetch_rgb(ivec2(nx,ny)),uint(a.y));
+   c=blend(top,bottom,uint(b.y));
+  }else c=fetch_rgb(ivec2(x*p.width/p.out_width,y*p.height/p.out_height));
+  color|=(c.r<<16)|(c.g<<8)|c.b;
+ }
+ pixels[xy.y*p.stride+xy.x]=color;
+}
