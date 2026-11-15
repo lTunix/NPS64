@@ -3,6 +3,12 @@
 #undef main
 #include <assert.h>
 #include <unistd.h>
+#ifdef NPS64_UPDATES
+void nps64_updater_init(void){}
+void nps64_updater_request(void){}
+void nps64_updater_shutdown(void){}
+void nps64_updater_status(char *text,size_t capacity,bool *busy){if(capacity)text[0]=0;if(busy)*busy=false;}
+#endif
 static uint32_t fb[SCREEN_W*SCREEN_H];static double now;static unsigned tick;static bool covers_paused;static unsigned hud_lines,detail_lines;
 void covers_init(void){} void covers_shutdown(void){} void covers_refresh(void){}
 void covers_set_paused(bool p){covers_paused=p;}

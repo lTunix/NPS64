@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icon.jpeg" alt="NPS64 by lTunix" width="480">
+  <img src="assets/readme-icon.png" alt="NPS64 by lTunix" width="480">
 </p>
 
 <h1 align="center">NPS64 by lTunix</h1>
@@ -32,7 +32,7 @@ Los juegos compatibles con Rumble Pak pueden hacer vibrar el mando. Está activa
 
 ## Actualizaciones
 
-Al abrir la aplicación, NPS64 busca nuevas versiones en GitHub y las descarga automáticamente en `/data/pkg`. También puedes pulsar **L2** en la biblioteca o elegir **Buscar actualizaciones** en el menú de pausa.
+Al abrir la aplicación, NPS64 busca nuevas versiones en GitHub y las descarga automáticamente en `/data/pkg`. También puedes elegir **Buscar actualizaciones** en Configuración o en el menú de pausa.
 
 El menú muestra el progreso de la descarga. Cuando termine, instala el nuevo PKG desde el instalador de tu PS4.
 
@@ -53,9 +53,23 @@ El menú muestra el progreso de la descarga. Cuando termine, instala el nuevo PK
 - [x] Descarga de actualizaciones en `/data/pkg`, con comprobación de integridad.
 - [ ] Instalación de actualizaciones desde la propia aplicación.
 - [ ] Mejorar la compatibilidad y el rendimiento en juegos exigentes.
-- [ ] Renderizado con Vulkan listo para uso general.
+- [x] Renderizado Vulkan con Mesa RADV, probado en PS4 física.
+- [x] Resolución interna nativa o 2×, guardada por juego.
+- [x] Configuración desde la biblioteca y selección de información/FPS en pantalla.
 
-Esta versión utiliza el renderizado por CPU. Las pruebas con Vulkan siguen en desarrollo y no forman parte de este PKG.
+Desde la **00.70**, el PKG público incorpora el renderizador Vulkan probado en PS4. Incluye mejoras de fluidez, presentación a 2× y continuidad del audio. El rendimiento depende del juego y la escena; no se garantizan 60 FPS constantes.
+
+La biblioteca y los menús se muestran en 16:9. El aspecto 4:3 o 16:9, la resolución interna y los demás ajustes de partida se guardan por juego; puedes cambiarlos desde sus ajustes o con **L3 + R3**.
+
+## Compatibilidad: Majora’s Mask
+
+En las pruebas de PS4, **The Legend of Zelda: Majora’s Mask de GameCube Collector’s Edition** presentó audio lento, distorsionado y cortes, además de peor fluidez que la edición de cartucho. **Se recomienda usar un volcado propio de la versión normal de Nintendo 64 (cartucho)**. Las correcciones de audio mejoran la reproducción general, pero no garantizan resolver las particularidades de Collector’s Edition.
+
+Mario Tennis también recibió correcciones de arranque, comprobadas durante las pruebas. La aparición de objetos a distancia conserva el comportamiento del juego; esta versión no incorpora parches de distancia de dibujado.
+
+## Paso desde las versiones de prueba Vulkan
+
+La 00.70 actualiza la aplicación original **NPSX00064** y utiliza `/data/NPS64/saves`, `/data/NPS64/settings.cfg` y `/data/NPS64/game-settings`. Las versiones de prueba **NPSV00064** usaban carpetas `vulkan-test-*`; esas partidas y configuraciones se conservan y no se migran automáticamente. Antes de trasladarlas manualmente, respalda ambas carpetas y cierra la aplicación.
 
 ## Mira cómo funciona
 

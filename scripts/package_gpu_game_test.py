@@ -4,9 +4,11 @@ from pathlib import Path
 import argparse, hashlib, json, os, shutil, struct, subprocess
 ROOT=Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser(description=__doc__)
+p.add_argument('--public-release',action='store_true')
 p.add_argument('--reference-work',type=Path,required=True)
 p.add_argument('--sdk',type=Path,required=True)
 args=p.parse_args();work=args.reference_work.resolve();sdk=args.sdk.resolve()
+version='00.70' if args.public_release else '00.31'
 build=ROOT/'build/gpu-game-test';stage=build/'stage';(stage/'sce_sys/about').mkdir(parents=True,exist_ok=True)
 (stage/'sce_module').mkdir(exist_ok=True)
 env=dict(os.environ,OO_PS4_TOOLCHAIN=str(sdk),DOTNET_SYSTEM_GLOBALIZATION_INVARIANT='1')
@@ -50,21 +52,23 @@ for source,dest in [(ROOT/'LICENSE','LICENSE.txt'),(ROOT/'docs/CREDITS.md','CRED
     'Reads /data/NPS64/games; isolated saves: /data/NPS64/vulkan-test-saves.\n'
     'Main log: /data/NPS64/vulkan-game-test.log; fatal log: /data/NPS64/vulkan-game-crash-00.31.log.\n'
     'Tennis USA/VC boot passed native testing; PS4 validation pending. Audio uses direct FIFO after sinc32 in this comparison. No ROMs included. No GitHub release.\n')
+if args.public_release:
+    (stage/'TEST-NOTES.txt').write_text('NPS64 '+version+' — public Vulkan build based on hardware-validated diagnostic 00.31. Original app identity, updater enabled, no diagnostic time limit. Saves: /data/NPS64/saves; settings: /data/NPS64/settings.cfg. Diagnostic saves remain untouched in /data/NPS64/vulkan-test-saves. No ROMs included. See README and release notes for compatibility and validation.\n')
 from PIL import Image, ImageOps
 with Image.open(ROOT/'icon.jpeg') as image:
     ImageOps.fit(image.convert('RGB'),(512,512),method=Image.Resampling.LANCZOS).save(stage/'sce_sys/icon0.png')
-content='IV0000-NPSV00064_00-NPS64VULKANTEST0';assert len(content)==36
+content='IV0000-NPSX00064_00-NPS64PS400000000' if args.public_release else 'IV0000-NPSV00064_00-NPS64VULKANTEST0';assert len(content)==36
 sfo=stage/'sce_sys/param.sfo';sfo.unlink(missing_ok=True)
 run([tool,'sfo_new',sfo])
-values={'APP_TYPE':('Integer',4,'1'),'APP_VER':('Utf8',8,'00.31'),'ATTRIBUTE':('Integer',4,'0'),
+values={'APP_TYPE':('Integer',4,'1'),'APP_VER':('Utf8',8,version),'ATTRIBUTE':('Integer',4,'0'),
         'CATEGORY':('Utf8',4,'gd'),'CONTENT_ID':('Utf8',48,content),'DOWNLOAD_DATA_SIZE':('Integer',4,'0'),
-        'SYSTEM_VER':('Integer',4,'0'),'TITLE':('Utf8',128,'NPS64 - Vulkan Game Test'),
-        'TITLE_ID':('Utf8',12,'NPSV00064'),'VERSION':('Utf8',8,'00.31')}
+        'SYSTEM_VER':('Integer',4,'0'),'TITLE':('Utf8',128,'NPS64 by lTunix' if args.public_release else 'NPS64 - Vulkan Game Test'),
+        'TITLE_ID':('Utf8',12,'NPSX00064' if args.public_release else 'NPSV00064'),'VERSION':('Utf8',8,version)}
 for key,(kind,size,value) in values.items():run([tool,'sfo_setentry',sfo,key,'--type',kind,'--maxsize',size,'--value',value])
 files=sorted(str(f.relative_to(stage)) for f in stage.rglob('*') if f.is_file() and f.suffix!='.gp4')
 run([tools/'create-gp4','-out','test.gp4','--content-id='+content,'--files',' '.join(files)],cwd=stage)
 run([tool,'pkg_build','test.gp4',ROOT/'out'],cwd=stage)
-pkg=ROOT/'out/NPS64-Vulkan-Game-Test-00.31.pkg';shutil.copyfile(ROOT/'out'/(content+'.pkg'),pkg)
+pkg=ROOT/'out'/('NPS64-by-lTunix-'+version+'.pkg' if args.public_release else 'NPS64-Vulkan-Game-Test-00.31.pkg');shutil.copyfile(ROOT/'out'/(content+'.pkg'),pkg)
 with (build/'pkg-validation.log').open('w') as stream:run([tool,'pkg_validate','--verbose',pkg],stdout=stream)
 checks=[x for x in (build/'pkg-validation.log').read_text().splitlines() if x.startswith('[')]
 assert len(checks)>20 and all(x.startswith('[OK]') for x in checks)
@@ -89,7 +93,7 @@ def fields(data):
 staged=fields(sfo.read_bytes());packaged=fields(entry('PARAM_SFO'));assert all(packaged.get(k)==v for k,v in staged.items())
 sha=hashlib.sha256(data).hexdigest();pkg.with_suffix('.sha256').write_text(sha+'  '+pkg.name+'\n')
 manifest={'package_sha256':sha,'bytes':len(data),'core_sha256':hashlib.sha256((build/'core/parallel_n64.a').read_bytes()).hexdigest(),
-          'profile':{'version':'00.31','deferred_vulkan_boot':True,'audio':'Original HLE voice interpolation + output sinc32 + direct FIFO','presentation':'bilinear when filtered VI is enabled','internal_resolution':'per-game native/2x','borrowed_gpu_frame':True,'async_log':True,'rdp_ring_words':65536,'skip_unchanged_sram':True,'presentation_simd':'SSSE3 + exact ratio specializations','native_texture_lod':True,'native_tex_rect':True,'audio_recovery_restart':4096,'smash_2x_overlap':False,'audio_stretch':False,'hle_voice_taps':0,'audio_capacity_frames':16384,'audio_prefill_frames':11520,'audio_target_frames':0,'sync_shader':False,'pipeline_cache':'RAM only; general split shader + asynchronous specialization', 'aco_debug':'nosched','scanout_buffers':3,'guard_sgprs':96,'session_limit_seconds':600},
+          'profile':{'version':version,'public_release':args.public_release,'title_id':'NPSX00064' if args.public_release else 'NPSV00064','deferred_vulkan_boot':True,'audio':'Original HLE voice interpolation + output sinc32 + direct FIFO','presentation':'bilinear when filtered VI is enabled','internal_resolution':'per-game native/2x','borrowed_gpu_frame':True,'async_log':True,'rdp_ring_words':65536,'skip_unchanged_sram':True,'presentation_simd':'SSSE3 + exact ratio specializations','native_texture_lod':True,'native_tex_rect':True,'audio_recovery_restart':4096,'smash_2x_overlap':False,'audio_stretch':False,'hle_voice_taps':0,'audio_capacity_frames':16384,'audio_prefill_frames':11520,'audio_target_frames':0,'sync_shader':False,'pipeline_cache':'RAM only; general split shader + asynchronous specialization', 'aco_debug':'nosched','scanout_buffers':3,'guard_sgprs':96,'session_limit_seconds':0 if args.public_release else 600},
           'source_sha256':{name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ['scripts/patch_vulkan_ring.py','src/save_cache.h','src/cadence_stats.h','src/log.c','src/log.h','scripts/patch_vulkan_perf.py','scripts/patch_vulkan_safety.py','src/bilinear_scaler.h','src/software_scaler.h','scripts/patch_audio.py','scripts/patch_vulkan_boot.py','src/rom_compat.h','src/audio_stretch.h','src/audio_queue.h','src/audio_resampler.h','src/storage.c','src/storage.h','src/settings.c','src/settings.h','src/library_ui.c','src/library_ui.h','src/covers.c','src/covers.h','src/cover_match.c','src/update_http_ps4.c','src/input_ps4.h','scripts/package_gpu_game_test.py','src/frontend.c','src/gpu_recipes.h','src/gpu_cache_store.h','scripts/build_gpu_game_test.py','src/gpu_vulkan.c','src/platform_ps4.c','src/gpu_pipeline_guard.c','src/gpu_compile_worker.c','src/gpu_cache_store.c','src/gpu_crashlog.c','src/gpu_recipes.c','scripts/patch_vulkan_recipes.py','scripts/patch_vulkan_async.py','scripts/patch_vulkan_cache.py','scripts/trace_vulkan_core.py']},
           'gpu_dependencies':json.loads((ROOT/'build/compute-probe-ps4/manifest.json').read_text()),
           'stable_pkg_sha256':hashlib.sha256((ROOT/'out/NPS64-by-lTunix-00.69.pkg').read_bytes()).hexdigest()}

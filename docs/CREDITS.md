@@ -22,7 +22,7 @@ Sus fuentes están en vendor/OpenOrbis/src/modules y se incluyen en el archivo
 de fuentes; docs/OpenOrbis-LICENSE.txt conserva la licencia del proyecto.
 
 La fuente rasterizada deriva de DejaVu Sans Mono. FONT-LICENSE.txt dentro del
-PKG incluye el aviso de Bitstream/DejaVu. El icono se dibuja con Pillow;
+PKG incluye el aviso de Bitstream/DejaVu. El icono actual se incluye en `icon.jpeg`; Pillow adapta su tamaño al PKG y al README;
 no se usan logos o imágenes de Nintendo/Sony. El nombre Nintendo 64 describe
 el sistema emulado y no implica afiliación.
 

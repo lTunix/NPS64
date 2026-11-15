@@ -47,7 +47,7 @@ static unsigned char hle_pixels[256*256*4];
 #ifndef DATA_ROOT
 #define DATA_ROOT "/data/NPS64"
 #endif
-#ifdef NPS64_GPU_GAME_TEST
+#if defined(NPS64_GPU_GAME_TEST) && !defined(NPS64_PUBLIC_RELEASE)
 static const char games_dir[]=DATA_ROOT "/games", saves_dir[]=DATA_ROOT "/vulkan-test-saves", system_dir[]=DATA_ROOT "/system";
 #define CONFIG_PATH DATA_ROOT "/vulkan-test-settings.cfg"
 #define DIAGNOSTICS_PATH DATA_ROOT "/vulkan-test-diagnostics.cfg"
@@ -56,7 +56,7 @@ static const char games_dir[]=DATA_ROOT "/games", saves_dir[]=DATA_ROOT "/saves"
 #define CONFIG_PATH DATA_ROOT "/settings.cfg"
 #define DIAGNOSTICS_PATH DATA_ROOT "/diagnostics.cfg"
 #endif
-#ifdef NPS64_GPU_GAME_TEST
+#if defined(NPS64_GPU_GAME_TEST) && !defined(NPS64_PUBLIC_RELEASE)
 #define GAME_SETTINGS_DIR DATA_ROOT "/vulkan-test-game-settings"
 #else
 #define GAME_SETTINGS_DIR DATA_ROOT "/game-settings"
@@ -69,7 +69,7 @@ static Game games[512],current;
 static size_t game_count,selected;
 static Input pads[4];
 static bool running,paused,quit_requested,options_dirty,core_shutdown;
-#ifdef NPS64_GPU_GAME_TEST
+#if defined(NPS64_GPU_GAME_TEST) && !defined(NPS64_PUBLIC_RELEASE)
 #ifndef NPS64_GAME_TEST_SECONDS
 #define NPS64_GAME_TEST_SECONDS 600.0
 #endif
@@ -615,7 +615,9 @@ static bool open_game_settings(void) {
 static bool start_game(void) {
 #ifdef NPS64_GPU_GAME_TEST
     if(setenv("NPS64_PIPELINE_CACHE_DIR",DATA_ROOT "/pipeline-cache",1))return false;
+#ifndef NPS64_PUBLIC_RELEASE
     game_test_wall_limit=NPS64_GAME_TEST_SECONDS;
+#endif
     /* Persist variant parameters only. Never restore opaque driver binaries. */
     if(setenv("NPS64_PIPELINE_CACHE_LOAD","0",1))return false;
     if(unsetenv("NPS64_GPU_API_TRACE") || unsetenv("NPS64_PIPELINE_RECIPE_DIR"))return false;
@@ -687,14 +689,14 @@ static bool start_game(void) {
 #endif
     settings_page=0;sidebar_focus=false;
     running=true; paused=false; last_autosave=platform_time(); platform_audio_clear();
-#ifdef NPS64_GPU_GAME_TEST
+#if defined(NPS64_GPU_GAME_TEST) && !defined(NPS64_PUBLIC_RELEASE)
     game_test_started=platform_time();game_test_limit_reached=false;
     nps64_log("[gpu-test] session wall_limit_s=%.3f includes_manual_pause=1\n",game_test_wall_limit);
 #endif
     notify(bad_save?"Partida no cargada; original conservado. Revisa el registro":"L3 + R3: pausa / estados / volver a biblioteca"); return true;
 }
 static void stop_game(void) {
-#ifdef NPS64_GPU_GAME_TEST
+#if defined(NPS64_GPU_GAME_TEST) && !defined(NPS64_PUBLIC_RELEASE)
     nps64_log("[gpu-test] stop VI=%llu elapsed_s=%.3f limit_reached=%u\n",
         (unsigned long long)core_frames,platform_time()-game_test_started,game_test_limit_reached);
 #endif
@@ -871,7 +873,11 @@ int main(void) {
 #endif
     const char *dirs[]={DATA_ROOT,games_dir,saves_dir,system_dir};
     for(size_t i=0;i<4;i++) { if(mkdir(dirs[i],0777)) { struct stat st; if(stat(dirs[i],&st) || !S_ISDIR(st.st_mode)) { nps64_log("No se puede crear %s\n",dirs[i]); return 1; } } }
-#ifdef NPS64_GPU_GAME_TEST
+#if defined(NPS64_PUBLIC_RELEASE)
+    nps64_log_init(DATA_ROOT "/nps64.log");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash.log");
+    nps64_log("NPS64 by lTunix " NPS64_VERSION "; Vulkan; synchronous FullSync; audio recovery; no session cap\n");
+#elif defined(NPS64_GPU_GAME_TEST)
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
     crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.31.log");
     nps64_log("NPS64 Vulkan Game Test 00.31; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
@@ -1120,7 +1126,7 @@ int main(void) {
 #endif
                 }
             }
-#ifdef NPS64_GPU_GAME_TEST
+#if defined(NPS64_GPU_GAME_TEST) && !defined(NPS64_PUBLIC_RELEASE)
             /* Wall-clock cap per load. Manual resume cannot bypass an expired cap. */
             if(running && !game_test_limit_reached && platform_time()-game_test_started>=game_test_wall_limit) {
                 game_test_limit_reached=true;paused=true;pause_selected=4;platform_audio_clear();
