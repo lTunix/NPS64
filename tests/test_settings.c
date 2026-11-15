@@ -11,20 +11,22 @@ int main(void){
  char root[]="/tmp/nps-settings-XXXXXX";assert(mkdtemp(root));char path[1024],dir[1024],gamepath[1024];
  snprintf(path,sizeof path,"%s/global.cfg",root);snprintf(dir,sizeof dir,"%s/games",root);
  const char *a="rom-0000000000000001",*b="rom-0000000000000002";
- Nps64AppSettings app,loaded;assert(!nps64_settings_load(path,&app));assert(app.language==0&&app.hud_mode==2&&!app.defaults.widescreen&&app.defaults.filtered_vi);
+ Nps64AppSettings app,loaded;assert(!nps64_settings_load(path,&app));assert(app.language==0&&app.hud_mode==2&&!app.defaults.aspect&&app.defaults.filtered_vi);
  const char *legacy[]={"NPS64CFG1 2 1 7\n","NPS64CFG2 2 1 7 0\n","NPS64CFG3 2 1 7 0 2\n"};
- for(unsigned i=0;i<3;i++){write_cfg(path,legacy[i]);assert(nps64_settings_load(path,&app));assert(app.theme==2&&app.defaults.slot==7&&!app.defaults.widescreen);}
+ for(unsigned i=0;i<3;i++){write_cfg(path,legacy[i]);assert(nps64_settings_load(path,&app));assert(app.theme==2&&app.defaults.slot==7&&!app.defaults.aspect);}
  app.hud_mode=0;assert(nps64_settings_save(path,&app));assert(nps64_settings_load(path,&loaded));assert(loaded.hud_mode==0&&loaded.defaults.controller_pak==2);
- Nps64GameSettings ga,gb;assert(!nps64_game_settings_load(dir,a,&app.defaults,&ga));ga.widescreen=true;ga.filtered_vi=true;ga.slot=3;ga.controller_pak=1;ga.resolution=0;
- assert(nps64_game_settings_save(dir,a,&ga));assert(!nps64_game_settings_load(dir,b,&app.defaults,&gb));assert(!gb.widescreen&&gb.slot==7);
- assert(nps64_game_settings_save(dir,b,&gb));assert(nps64_game_settings_load(dir,a,&app.defaults,&ga));assert(ga.widescreen&&ga.filtered_vi&&ga.slot==3&&ga.controller_pak==1&&ga.resolution==0);
+ Nps64GameSettings ga,gb;assert(!nps64_game_settings_load(dir,a,&app.defaults,&ga));ga.aspect=true;ga.filtered_vi=true;ga.slot=3;ga.controller_pak=1;ga.resolution=0;
+ assert(nps64_game_settings_save(dir,a,&ga));assert(!nps64_game_settings_load(dir,b,&app.defaults,&gb));assert(!gb.aspect&&gb.slot==7);
+ assert(nps64_game_settings_save(dir,b,&gb));assert(nps64_game_settings_load(dir,a,&app.defaults,&ga));assert(ga.aspect&&ga.filtered_vi&&ga.slot==3&&ga.controller_pak==1&&ga.resolution==0);
+ ga.aspect=NPS64_ASPECT_EXPERIMENTAL;assert(nps64_game_settings_save(dir,a,&ga));assert(nps64_game_settings_load(dir,a,&app.defaults,&ga)&&ga.aspect==NPS64_ASPECT_EXPERIMENTAL);
+ ga.aspect=NPS64_ASPECT_COUNT;assert(!nps64_game_settings_save(dir,a,&ga));ga.aspect=NPS64_ASPECT_STRETCHED;
  assert(!nps64_game_settings_save(dir,"../global",&ga));assert(!nps64_game_settings_reset(dir,"../global"));
- assert(nps64_game_settings_reset(dir,a));assert(!nps64_game_settings_load(dir,a,&app.defaults,&ga));assert(!ga.widescreen);assert(nps64_game_settings_load(dir,b,&app.defaults,&gb));
+ assert(nps64_game_settings_reset(dir,a));assert(!nps64_game_settings_load(dir,a,&app.defaults,&ga));assert(!ga.aspect);assert(nps64_game_settings_load(dir,b,&app.defaults,&gb));
  const char *bad[]={"NPS64CFG4 0 3 0 1 0","NPS64CFG4 0 1 8 1 0","NPS64CFG4 0 1 0 2 0","NPS64CFG4 0 1 0 1 3","NPS64CFG4 0 1","NPS64CFG4 0 1 0 1 0 garbage","NPS64CFG4 -1 1 0 1 0"};
  for(unsigned i=0;i<sizeof bad/sizeof *bad;i++){write_cfg(path,bad[i]);assert(!nps64_settings_load(path,&loaded));assert(loaded.hud_mode==2);}
  char huge[300];memset(huge,' ',sizeof huge);memcpy(huge,"NPS64CFG4 0 1 0 1 0",19);assert(file_write_atomic(path,huge,sizeof huge));assert(!nps64_settings_load(path,&loaded));
  const char nul[]="NPS64CFG4 0 1 0 1 0\0ignored";assert(file_write_atomic(path,nul,sizeof nul));assert(!nps64_settings_load(path,&loaded));
- snprintf(gamepath,sizeof gamepath,"%s/%s.cfg",dir,b);write_cfg(gamepath,"NPS64GAME1 2 1 0 0");assert(!nps64_game_settings_load(dir,b,&app.defaults,&gb));assert(!gb.widescreen&&gb.slot==7);
+ snprintf(gamepath,sizeof gamepath,"%s/%s.cfg",dir,b);write_cfg(gamepath,"NPS64GAME1 2 1 0 0");assert(!nps64_game_settings_load(dir,b,&app.defaults,&gb));assert(!gb.aspect&&gb.slot==7);
  write_cfg(gamepath,"NPS64GAME1 0 1 2 1");assert(nps64_game_settings_load(dir,b,&app.defaults,&gb));assert(gb.resolution==app.defaults.resolution);
  const char *bad_res[]={"NPS64GAME2 0 1 2 1 2","NPS64GAME2 0 1 2 1 -1","NPS64GAME2 0 1 2 1","NPS64GAME2 0 1 2 1 0 trailing"};
  for(unsigned i=0;i<sizeof bad_res/sizeof *bad_res;i++){write_cfg(gamepath,bad_res[i]);assert(!nps64_game_settings_load(dir,b,&app.defaults,&gb));}
@@ -35,5 +37,9 @@ int main(void){
  app.language=2;assert(!nps64_settings_save(path,&app));
  const char *bad_lang[]={"NPS64CFG6 0 2 0 1 0 1 2","NPS64CFG6 0 2 0 1 0 1 -1","NPS64CFG6 0 2 0 1 0 1","NPS64CFG6 0 2 0 1 0 1 1 trailing"};
  for(unsigned i=0;i<sizeof bad_lang/sizeof *bad_lang;i++){write_cfg(path,bad_lang[i]);assert(!nps64_settings_load(path,&loaded)&&loaded.language==0);}
+ const char *game_versions[]={"NPS64GAME1 1 1 3 1\n","NPS64GAME2 1 1 3 1 0\n","NPS64GAME3 2 1 3 1 0\n"};
+ for(unsigned i=0;i<3;i++){write_cfg(gamepath,game_versions[i]);assert(nps64_game_settings_load(dir,b,&app.defaults,&gb));assert(gb.aspect==(i==2?NPS64_ASPECT_EXPERIMENTAL:NPS64_ASPECT_STRETCHED));}
+ const char *bad_aspect[]={"NPS64GAME1 2 1 0 0","NPS64GAME2 2 1 0 0 1","NPS64GAME3 3 1 0 0 1","NPS64GAME3 -1 1 0 0 1","NPS64GAME3 2 1 0 0 1 trailing"};
+ for(unsigned i=0;i<sizeof bad_aspect/sizeof *bad_aspect;i++){write_cfg(gamepath,bad_aspect[i]);assert(!nps64_game_settings_load(dir,b,&app.defaults,&gb)&&gb.aspect==NPS64_ASPECT_NATIVE);}
  unlink(gamepath);rmdir(dir);unlink(path);rmdir(root);puts("PASS settings: migration, HUD, per-ROM isolation, reset and malformed input");return 0;
 }

@@ -9,6 +9,7 @@
 #include <orbis/AudioOut.h>
 #include <orbis/Sysmodule.h>
 #include <assert.h>
+#include <setjmp.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -183,6 +184,18 @@ int32_t sceKernelOpen(const char *p,int32_t f,OrbisKernelMode m) {return open(p,
 size_t sceKernelWrite(int32_t f,const void *p,size_t n) {return (size_t)write(f,p,n);}
 int32_t sceKernelClose(int32_t f) {return close(f);}
 int32_t sceKernelFsync(int32_t f) {return fsync(f);}
+static jmp_buf system_exit_jump;
+static unsigned system_exit_calls;
+int32_t sceSystemServiceLoadExec(const char *path,const char *args[]){
+    assert(!strcmp(path,"exit")&&!args);system_exit_calls++;
+    if(system_exit_calls==1)return -1;
+    longjmp(system_exit_jump,1);
+}
+static void test_system_exit(void){
+    if(!setjmp(system_exit_jump)){platform_exit();assert(!"platform_exit returned to CRT");}
+    assert(system_exit_calls==2&&slept==1000000);
+    puts("PASS PS4 system exit: LoadExec exit, retry after a returned error, never return to CRT");
+}
 int main(void) {
     assert(nps64_log_init("build/ps4-backend-test.log"));
 #ifdef NPS64_GPU
@@ -215,7 +228,7 @@ int main(void) {
         assert(platform_gpu_scanout_unregister());check_scanout_retained();assert(platform_framebuffer()==canvas);
     }
     for(unsigned i=0;i<3;i++)free(gpu_pixels[i]);
-    platform_shutdown();nps64_log_close();puts("PASS: external GPU scanout, no writes to pending/displayed buffers, CPU menu transitions, retirement and registration fallback");return 0;
+    platform_shutdown();nps64_log_close();test_system_exit();puts("PASS: external GPU scanout, no writes to pending/displayed buffers, CPU menu transitions, retirement and registration fallback");return 0;
 #endif
     if(getenv("TEST_FLIP_JITTER")) {
         /* Variable emulation cost: slow VI followed by a cheap VI, mean
@@ -287,5 +300,5 @@ int main(void) {
     FILE *f=fopen("build/ps4-backend-test.log","rb");assert(f);
     char text[1024]={0};fread(text,1,sizeof(text)-1,f);fclose(f);assert(strstr(text,"dedicated log 123"));
     puts("PASS: PS4 canvas, bounded pipelined flips, vblank overlap, safe shutdown, clock, Pad and log");
-    return 0;
+    test_system_exit();return 0;
 }

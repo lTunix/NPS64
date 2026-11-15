@@ -28,21 +28,21 @@ static void text(int x,int y,const char *str,unsigned size,uint32_t color,int li
 /* Small vector glyphs, sampled at 4x4 for smooth contours at 720p.
  * Coverage is cached once per glyph; redraw only blends the small mask.
  * No allocation or file access in the menu draw path. */
-typedef enum {KEY_CROSS,KEY_CIRCLE,KEY_SQUARE,KEY_LEFT,KEY_RIGHT,KEY_L1,KEY_R1,KEY_L2,KEY_R2,KEY_L3,KEY_R3} ButtonIcon;
+typedef enum {KEY_CROSS,KEY_CIRCLE,KEY_SQUARE,KEY_LEFT,KEY_RIGHT,KEY_L1,KEY_R1,KEY_L2,KEY_R2,KEY_L3,KEY_R3,KEY_OPTIONS} ButtonIcon;
 static float segment_distance(float x,float y,float ax,float ay,float bx,float by) {
     float dx=bx-ax,dy=by-ay,t=((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy);
     if(t<0)t=0;if(t>1)t=1;
     return hypotf(x-ax-t*dx,y-ay-t*dy);
 }
 static int button_icon(int x,int y,ButtonIcon key,uint32_t color) {
-    bool shoulder=key>=KEY_L1;int width=shoulder?40:26,height=26;
+    bool shoulder=key>=KEY_L1;int width=key==KEY_OPTIONS?96:shoulder?40:26,height=26;
     if(key==KEY_CROSS)color=0xff80c8ff;
     if(key==KEY_CIRCLE)color=0xffff8d8d;
     if(key==KEY_SQUARE)color=0xffe6a0d4;
-    static unsigned char masks[KEY_R3+1][40*26];static bool ready[KEY_R3+1];
+    static unsigned char masks[KEY_OPTIONS+1][104*26];static bool ready[KEY_OPTIONS+1];
     uint32_t *fb=platform_framebuffer();
     for(int py=0;py<height;py++)for(int px=0;px<width;px++) {
-        unsigned coverage=masks[key][py*40+px];
+        unsigned coverage=masks[key][py*104+px];
         if(!ready[key]){coverage=0;
         for(unsigned sy=0;sy<4;sy++)for(unsigned sx=0;sx<4;sx++) {
             float u=px+(sx+.5f)/4,v=py+(sy+.5f)/4,d;
@@ -58,7 +58,7 @@ static int button_icon(int x,int y,ButtonIcon key,uint32_t color) {
             }
             if(d<1.1f)coverage++;
         }
-        masks[key][py*40+px]=(unsigned char)coverage;
+        masks[key][py*104+px]=(unsigned char)coverage;
         }
         if(!coverage||x+px<0||x+px>=SCREEN_W||y+py<0||y+py>=SCREEN_H)continue;
         uint32_t *pixel=&fb[(y+py)*SCREEN_W+x+px],old=*pixel,result=0xff000000;
@@ -67,8 +67,8 @@ static int button_icon(int x,int y,ButtonIcon key,uint32_t color) {
     }
     ready[key]=true;
     if(shoulder) {
-        static const char *names[]={"L1","R1","L2","R2","L3","R3"};
-        text(x+10,y+1,names[key-KEY_L1],0,color,30);
+        static const char *names[]={"L1","R1","L2","R2","L3","R3","OPTIONS"};
+        text(x+10,y+1,names[key-KEY_L1],0,color,key==KEY_OPTIONS?80:30);
     }
     return width;
 }
@@ -129,7 +129,8 @@ void library_ui_draw(const Game *games,size_t count,size_t selected,uint32_t acc
     hx=hint(hx,651,KEY_SQUARE,nps64_tr("Buscar ROMs"),0xffdbe4f0);
     hx=hint(hx,651,KEY_L2,nps64_tr("Configuracion"),0xffdbe4f0);
     hx=hint(hx,651,KEY_R2,nps64_tr("Juego"),0xffdbe4f0);
-    hint(hx,651,KEY_LEFT,"Menu",0xffdbe4f0);
+    hx=hint(hx,651,KEY_LEFT,"Menu",0xffdbe4f0);
+    hint(hx,651,KEY_OPTIONS,nps64_tr("Salir"),0xffdbe4f0);
     text(230,678,updates&&*updates?updates:message,0,accent,1000);
 }
 void library_ui_shutdown(void){covers_shutdown();free(font);font=NULL;}

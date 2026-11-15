@@ -33,6 +33,7 @@ void retro_cheat_set(unsigned index, bool enabled, const char *text)
     }
     if (count && cheat_add_new(&g_cheat_ctx, name, codes, (int)count)) cheat_set_enabled(&g_cheat_ctx, name, 1);
 }
+int nps64_widescreen_enable(int active) { return cheat_set_enabled(&g_cheat_ctx, "cheat_4096", active != 0); }
 void nps64_cheat_button(int active) { extern void event_set_gameshark(int); event_set_gameshark(active); }
 '''
 def patch(root):
@@ -46,5 +47,16 @@ def patch(root):
  if 'NPS64: reject RAM access' not in s:
   assert marker in s;s=s.replace(marker,marker+guard)
  s=s.replace('cheat_code_t *code = malloc(sizeof(*code));\n', 'cheat_code_t *code = malloc(sizeof(*code));\n                if (!code) { cheat->enabled = 0; return 0; }\n') if 'if (!code) { cheat->enabled' not in s else s
+ # Live projection writes wait for initialized memory and respect replaced overlays.
+ marker='                            if ((code->address & 0xF0000000) != 0xF0000000) {\n                                execute_cheat(r4300, code->address, code->value, &code->old_value);'
+ replacement='                            if ((code->address & 0xF0000000) != 0xF0000000) {\n                                if (strcmp(cheat->name, "cheat_4096") == 0 && (code->address >> 24) == 0x81) {\n                                    uint16_t current = read_address_16bit(r4300, code->address);\n                                    if (code->old_value == CHEAT_CODE_MAGIC_VALUE) {\n                                        if (!current || current == 0xffff) break;\n                                    } else if (current != (uint16_t)code->old_value && current != (uint16_t)code->value) break;\n                                }\n                                execute_cheat(r4300, code->address, code->value, &code->old_value);'
+ if 'uint16_t current = read_address_16bit(r4300, code->address);' not in s:
+  assert marker in s;s=s.replace(marker,replacement)
+ # Only the hidden widescreen slot uses guarded live restoration. Keep ordinary cheats unchanged.
+ marker='                    if(code->old_value != CHEAT_CODE_MAGIC_VALUE)\n                    {\n                        execute_cheat(r4300, code->address, code->old_value, NULL);'
+ replacement='                    if(code->old_value != CHEAT_CODE_MAGIC_VALUE)\n                    {\n                        /* Widescreen: do not overwrite an overlay replaced by the game/state. */\n                        int wide = strcmp(cheat->name, "cheat_4096") == 0;\n                        if (!wide || ((code->address >> 24) == 0x81 &&\n                            read_address_16bit(r4300, code->address) == (uint16_t)code->value))\n                            execute_cheat(r4300, code->address, code->old_value, NULL);'
+ if 'Widescreen: do not overwrite' not in s:
+  assert marker in s;s=s.replace(marker,replacement)
+ s=s.replace('code->old_value = CHEAT_CODE_MAGIC_VALUE;\n                    }', 'if (!wide) code->old_value = CHEAT_CODE_MAGIC_VALUE;\n                    }')
  if p.read_text()!=s:p.write_text(s)
 if __name__=='__main__':patch(sys.argv[1])

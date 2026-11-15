@@ -11,6 +11,8 @@ enum { BTN_UP=1, BTN_DOWN=2, BTN_LEFT=4, BTN_RIGHT=8, BTN_CONFIRM=16,
 typedef struct { uint32_t buttons,raw_buttons; int16_t lx,ly,rx,ry; uint16_t joy; bool connected; } Input;
 bool platform_init(void);
 void platform_shutdown(void);
+/* Console titles close through the system service rather than returning to CRT. */
+void platform_exit(void) __attribute__((weak));
 void platform_poll(Input pads[4]);
 bool platform_rumble(unsigned port,unsigned effect,uint16_t strength);
 void platform_rumble_clear(void);

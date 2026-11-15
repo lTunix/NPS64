@@ -14,6 +14,7 @@
 #include <orbis/UserService.h>
 #include <orbis/AudioOut.h>
 #include <orbis/Sysmodule.h>
+#include <orbis/SystemService.h>
 /* SDK leaves this prototype unspecified; preserve the real signed result ABI. */
 extern int32_t nps64_module_is_loaded(enum OrbisSysModuleInternal) __asm__("sceSysmoduleIsLoadedInternal");
 #include <stdio.h>
@@ -461,4 +462,15 @@ void platform_shutdown(void) {
     if(memory) sceKernelMunmap(memory,memory_size);
     if(memory_allocated) sceKernelReleaseDirectMemory(memory_offset,memory_size);
     if(queue_created) sceKernelDeleteEqueue(flip_queue);
+}
+void platform_exit(void) {
+    /* Returning from main reaches libc _Exit/_exit, which traps with SIGSYS
+     * in a retail PS4 title. All workers and display buffers are retired first.
+     * LoadExec normally never returns; keep waiting/retrying if it does. */
+    BOOT("[exit] system close requested\n");
+    for(;;) {
+        int32_t result=sceSystemServiceLoadExec("exit",NULL);
+        RESULT("[exit] LoadExec returned",result);
+        sceKernelUsleep(1000000);
+    }
 }

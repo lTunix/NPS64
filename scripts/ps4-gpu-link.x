@@ -87,10 +87,15 @@ SECTIONS
 
 	.data : {
 		*(.data .data.*)
+		# create-fself sums section sizes for the writable image. Include
+		# alignment padding in .data rather than leaving a gap before .bss.
+		. = ALIGN(0x4000);
 	}
 
-	.bss : {
+	.bss (NOLOAD) : ALIGN(0x4000) {
 		*(.bss .bss.*)
+		*(COMMON)
+		. = ALIGN(0x4000);
 	}
 
 	# Force .got.plt to appear, because SPRX requires a valid .got.plt.

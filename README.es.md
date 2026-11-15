@@ -1,22 +1,36 @@
-**[English](README.md) · Español**
+<p align="center">
+  <a href="README.md"><img src="assets/readme/english.svg" alt="English" width="132" height="44"></a>
+  <a href="README.es.md"><img src="assets/readme/spanish.svg" alt="Espanol" width="132" height="44"></a>
+</p>
 
 <p align="center">
-  <img src="assets/readme-icon.png" alt="NPS64 by lTunix" width="480">
+  <img src="assets/readme-icon.png" alt="NPS64 by lTunix" width="300">
 </p>
 
 <h1 align="center">NPS64 by lTunix</h1>
 
+<p align="center">Preservando videojuegos de Nintendo 64 en PlayStation 4.</p>
+
 <p align="center">
-  <a href="https://www.paypal.com/donate/?hosted_button_id=XMVFTFEQKX8Q8">
-    <img src="https://img.shields.io/badge/Donar-PayPal-0070BA?style=for-the-badge&amp;logo=paypal&amp;logoColor=white" alt="Donar con PayPal">
-  </a>
+  <a href="https://github.com/lTunix/NPS64/releases/latest"><img src="assets/readme/download-es.svg" alt="Descargar el ultimo PKG" height="44"></a>
+  <a href="docs/RELEASE-00.73.md"><img src="assets/readme/notes-es.svg" alt="Novedades de la version" height="44"></a>
+  <a href="https://github.com/lTunix/NPS64/issues"><img src="assets/readme/issue-es.svg" alt="Reportar un error" height="44"></a>
+  <a href="https://www.paypal.com/donate/?hosted_button_id=XMVFTFEQKX8Q8"><img src="assets/readme/donate-es.svg" alt="Donar con PayPal" height="44"></a>
 </p>
 
-<p align="center">Preservando videojuegos de Nintendo 64 en PlayStation 4.</p>
+<p align="center">
+  <img src="assets/readme/features.svg" alt="PS4 · Vulkan · Native / 2x · English / Espanol" width="672">
+</p>
+
+<p align="center">
+  <img src="assets/readme/pixel-signal.gif" alt="" width="880">
+</p>
 
 **NPS64 es una aplicación en desarrollo** para volver a disfrutar juegos de Nintendo 64 en PS4. Su objetivo es contribuir a la preservación de videojuegos y mantener vivas sus historias, mundos y experiencias.
 
 Todavía estamos mejorando la compatibilidad, el rendimiento y la experiencia de uso. Algunos juegos pueden presentar errores o funcionar más lento de lo esperado.
+
+<p align="center"><img src="assets/readme/divider.svg" alt="" width="880"></p>
 
 ## Descargar
 
@@ -38,14 +52,30 @@ Durante una partida, pulsa **L3 + R3** para abrir el menú de pausa. Desde allí
 
 Los juegos compatibles con Rumble Pak pueden hacer vibrar el mando. Está activado por defecto para los cuatro jugadores. En el menú de pausa, **Accesorio** permite elegir Rumble Pak, Memory Pak o ninguno; la elección se guarda. La vibración se detiene al pausar o volver a la biblioteca.
 
+En la biblioteca, **Options** sale de NPS64; durante la partida conserva su función de Start de Nintendo 64.
+
 ## Idioma
 
-La **00.72** usa **inglés por defecto**. En **Settings → Language**, elige **English** o **Espanol**; el cambio se aplica inmediatamente y se guarda al cerrar la app. Los ajustes antiguos conservan sus opciones y comienzan en inglés. Este ajuste cambia la interfaz de NPS64, no el idioma de las ROMs.
+La **00.73** usa **inglés por defecto**. En **Settings → Language**, elige **English** o **Espanol**; el cambio se aplica inmediatamente y se guarda al cerrar la app. Los ajustes antiguos conservan sus opciones y comienzan en inglés. Este ajuste cambia la interfaz de NPS64, no el idioma de las ROMs.
 
+
+## Ajustes de imagen
+
+Selecciona **Ajustes del juego** en la biblioteca o abre **L3 + R3** durante la partida. Las selecciones se guardan por separado para cada juego.
+
+| Formato | Comportamiento |
+|---|---|
+| **4:3** | Proporciones originales de pantalla. |
+| **16:9 (estirado)** | Ocupa la pantalla ancha estirando la imagen. |
+| **16:9 experimental** | Aplica un parche de proyección específico del juego y muestra el resultado en 16:9. |
+
+El widescreen experimental admite por ahora **Super Mario 64 USA Rev 0** y **Super Smash Bros. USA Rev 0**. NPS64 comprueba CRC de cabecera, región, revisión y tamaño; las versiones no compatibles omiten esta opción. Se activa o desactiva desde la fila de aspecto, por separado de Trucos. La imagen se actualiza al continuar la partida. Algunas escenas o elementos del HUD pueden presentar problemas visuales. Ocarina of Time todavía no está incluido en este catálogo inicial.
+
+La **resolución interna nativa / 2×** también cambia en vivo desde la pausa, sin recargar la ROM. El primer cambio puede preparar brevemente los recursos de GPU mientras el juego está pausado; se muestra la nueva resolución al continuar.
 
 ## Trucos (experimental)
 
-La versión **00.72** incluye la base GameShark de Mupen64Plus y busca códigos por CRC de cabecera y región de la ROM, no por nombre de archivo. Abre **Ajustes del juego → Trucos** desde la biblioteca o **Trucos** en la pausa **L3 + R3**. **X** activa/desactiva, **L1/R1** cambia de página, **Cuadrado** desactiva todos y **Círculo** vuelve. Durante la partida, **R2** funciona como botón GameShark para los códigos que lo requieran.
+NPS64 incluye la base GameShark de Mupen64Plus y busca códigos por CRC de cabecera y región de la ROM, no por nombre de archivo. Abre **Ajustes del juego → Trucos** desde la biblioteca o **Trucos** en la pausa **L3 + R3**. **X** activa/desactiva, **L1/R1** cambia de página, **Cuadrado** desactiva todos y **Círculo** vuelve. Durante la partida, **R2** funciona como botón GameShark para los códigos que lo requieran.
 
 Todos comienzan desactivados. La selección se guarda por ROM; las variantes son excluyentes y se permiten hasta 32 activos. Se incluyen opciones de parámetros y se omiten 29 entradas incompatibles o mal formadas. Algunos códigos requieren reiniciar el juego; desactivarlos no revierte todos los cambios, incluidos los guardados por el juego. No se modifica el archivo de la ROM.
 
@@ -54,6 +84,8 @@ Todos comienzan desactivados. La selección se guarda por ROM; las variantes son
 Al abrir la aplicación, NPS64 busca nuevas versiones en GitHub y las descarga automáticamente en `/data/pkg`. También puedes elegir **Buscar actualizaciones** en Configuración o en el menú de pausa.
 
 El menú muestra el progreso de la descarga. Cuando termine, instala el nuevo PKG desde el instalador de tu PS4.
+
+<p align="center"><img src="assets/readme/divider.svg" alt="" width="880"></p>
 
 ## Funciones actuales
 
@@ -73,12 +105,15 @@ El menú muestra el progreso de la descarga. Cuando termine, instala el nuevo PK
 - [ ] Instalación de actualizaciones desde la propia aplicación.
 - [x] Mejorar la compatibilidad y el rendimiento en juegos exigentes.
 - [x] Renderizado Vulkan con Mesa RADV, probado en PS4 física.
-- [x] Resolución interna nativa o 2×, guardada por juego.
+- [x] Cambio de resolución interna nativa / 2× en vivo, guardado por juego.
+- [x] Perfiles 16:9 experimentales opcionales para versiones de ROM compatibles.
 - [x] Configuración desde la biblioteca y selección de información/FPS en pantalla.
 
 Desde la **00.70**, el PKG público incorpora el renderizador Vulkan probado en PS4. Incluye mejoras de fluidez, presentación a 2× y continuidad del audio. El rendimiento depende del juego y la escena; no se garantizan 60 FPS constantes.
 
 La biblioteca y los menús se muestran en 16:9. El aspecto 4:3 o 16:9, la resolución interna y los demás ajustes de partida se guardan por juego; puedes cambiarlos desde sus ajustes o con **L3 + R3**.
+
+<p align="center"><img src="assets/readme/divider.svg" alt="" width="880"></p>
 
 ## Compatibilidad: Majora’s Mask
 
@@ -93,6 +128,8 @@ La 00.70 actualiza la aplicación original **NPSX00064** y utiliza `/data/NPS64/
 ## Ayúdanos a mejorar
 
 Si encuentras un problema, [abre un reporte](https://github.com/lTunix/NPS64/issues) indicando el juego, la versión de NPS64 y qué ocurrió. Una imagen o un video también ayuda.
+
+<p align="center"><img src="assets/readme/divider.svg" alt="" width="880"></p>
 
 ## Preservación y comunidad
 

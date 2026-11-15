@@ -154,3 +154,15 @@
 {"Trucos desactivados. Los cambios realizados pueden requerir reiniciar.","Cheats disabled. Existing changes may require restarting."},
 {"Todos desactivados por defecto; las variantes de un truco son excluyentes.","All disabled by default; variants of the same cheat are mutually exclusive."},
 {"Trucos: %u activos","Cheats: %u enabled"},
+
+{"16:9 (estirado)","16:9 (stretched)"},
+{"16:9 experimental","16:9 experimental"},
+{"Widescreen experimental no disponible para esta version de la ROM","Widescreen experimental is unavailable for this ROM version"},
+{"No se pudo aplicar Widescreen experimental","Could not apply Widescreen experimental"},
+{"Formato aplicado; se actualiza al continuar la partida","Format applied; the picture updates when gameplay resumes"},
+
+{"Salir","Exit"},
+
+{"Resolucion: %s","Resolution: %s"},
+{"Resolucion aplicada: %s","Resolution applied: %s"},
+{"No se pudo cambiar la resolucion; se conserva la anterior","Could not change resolution; the previous setting is retained"},

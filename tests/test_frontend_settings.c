@@ -1,3 +1,11 @@
+/* The public UI fixture uses a CPU test core; provide only its crash-log
+ * service here, without enabling the diagnostic GPU-required startup gate. */
+#if defined(NPS64_PUBLIC_RELEASE) && !defined(NPS64_GPU_GAME_TEST)
+#include <stdbool.h>
+#include "../src/gpu_crashlog.h"
+static bool crash_capture_ready;
+bool nps64_gpu_crashlog_init(const char *path){(void)path;return false;}
+#endif
 #define main frontend_main
 #include "../src/frontend.c"
 #undef main
@@ -11,6 +19,12 @@ void nps64_updater_shutdown(void){}
 void nps64_updater_status(char *text,size_t capacity,bool *busy){if(capacity)snprintf(text,capacity,"%s",updater_test_text);if(busy)*busy=false;}
 #endif
 static unsigned cheat_enables,cheat_disables;
+static int wide_enabled,wide_toggles;
+static bool platform_closed;
+static bool resolution_fail;static unsigned resolution_factor;
+int __wrap_nps64_parallel_resolution(unsigned factor){resolution_factor=factor;return !resolution_fail;}
+void platform_exit(void){platform_closed=true;}
+int __wrap_nps64_widescreen_enable(int enabled){wide_enabled=enabled;wide_toggles++;return 1;}
 void __wrap_retro_cheat_reset(void){}
 void __wrap_retro_cheat_set(unsigned index,bool enabled,const char *code){(void)index;if(enabled){assert(nps64_cheat_code_valid(code));cheat_enables++;}else{assert(!code);cheat_disables++;}}
 static uint32_t fb[SCREEN_W*SCREEN_H];static double now;static unsigned tick;static bool covers_paused;static unsigned hud_lines,detail_lines;
@@ -39,11 +53,11 @@ void platform_poll(Input p[4]){
  case 3:assert(settings_page==1);screenshot("build/settings-general.ppm");p[0].buttons=BTN_CONFIRM;break;
  case 5:assert(preferences.hud_mode==0);p[0].buttons=BTN_BACK;break;
  case 7:screenshot("build/settings-library.ppm");p[0].buttons=BTN_GAME_SETTINGS;break;
- case 9:assert(settings_page==2);assert(!editing_game.widescreen);p[0].buttons=BTN_CONFIRM;break;
- case 11:assert(editing_game.widescreen);editing_game.resolution=0;assert(nps64_game_settings_save(GAME_SETTINGS_DIR,games[selected].key,&editing_game));screenshot("build/settings-game.ppm");p[0].buttons=BTN_BACK;break;
+ case 9:assert(settings_page==2);assert(!editing_game.aspect);p[0].buttons=BTN_CONFIRM;break;
+ case 11:assert(editing_game.aspect);editing_game.resolution=0;assert(nps64_game_settings_save(GAME_SETTINGS_DIR,games[selected].key,&editing_game));screenshot("build/settings-game.ppm");p[0].buttons=BTN_BACK;break;
  case 13:p[0].buttons=BTN_DOWN;break;
  case 15:p[0].buttons=BTN_GAME_SETTINGS;break;
- case 17:assert(settings_page==2&&!editing_game.widescreen&&editing_game.resolution==1);p[0].buttons=BTN_BACK;break;
+ case 17:assert(settings_page==2&&!editing_game.aspect&&editing_game.resolution==1);p[0].buttons=BTN_BACK;break;
  case 19:p[0].buttons=BTN_UP;break;
  case 21:p[0].buttons=BTN_CONFIRM;break;
  case 22:assert(resolution_mode==0&&resolution_next==0);assert(running&&widescreen&&covers_paused&&ram_writes_allowed);p[0].buttons=BTN_PAUSE;break;
@@ -51,11 +65,11 @@ void platform_poll(Input p[4]){
  case 26: p[0].buttons=BTN_DOWN;break;
  case 28: p[0].buttons=BTN_DOWN;break;
  case 30:screenshot("build/settings-pause.ppm");assert(pause_selected==3);p[0].buttons=BTN_CONFIRM;break;
- case 31:pause_selected=PAUSE_CHOICES-3;p[0].buttons=BTN_RIGHT;break;
- case 32:assert(resolution_mode==0&&resolution_next==1);pause_selected=3;assert(!widescreen);p[0].buttons=BTN_DOWN;break;
+ case 31:use_gpu=true;pause_selected=PAUSE_CHOICES-3;p[0].buttons=BTN_RIGHT;break;
+ case 32:assert(resolution_mode==1&&resolution_next==1&&resolution_factor==2);use_gpu=false;pause_selected=3;assert(!widescreen);p[0].buttons=BTN_DOWN;break;
  case 34:p[0].buttons=BTN_CONFIRM;break;
  case 36:assert(!running&&!covers_paused);assert(!strcmp(message,nps64_tr("Partida guardada. Selecciona otro juego")));p[0].buttons=BTN_GAME_SETTINGS;break;
- case 38:assert(!editing_game.widescreen&&editing_game.resolution==1);p[0].buttons=BTN_BACK;break;
+ case 38:assert(!editing_game.aspect&&editing_game.resolution==1);p[0].buttons=BTN_BACK;break;
  case 40:p[0].buttons=BTN_LEFT;break;
  case 42:assert(sidebar_focus);p[0].buttons=BTN_DOWN;break;
  case 44:p[0].buttons=BTN_CONFIRM;break;
@@ -114,5 +128,19 @@ int main(void){
  preferences.hud_mode=0;game_hud_draw();assert(hud_lines==0&&detail_lines==0);
  preferences.hud_mode=1;game_hud_draw();assert(hud_lines==1&&detail_lines==0);
  preferences.hud_mode=2;game_hud_draw();assert(hud_lines==2&&detail_lines==1);free(native_frame);native_frame=NULL;
+ assert(platform_closed);
+ use_gpu=true;resolution_mode=resolution_next=0;uint64_t frames_before=core_frames;
+ resolution_change();assert(resolution_mode==1&&resolution_next==1&&resolution_factor==2&&options_dirty&&core_frames==frames_before);
+ resolution_fail=true;resolution_change();assert(resolution_mode==1&&resolution_next==1);
+ resolution_fail=false;resolution_change();assert(resolution_mode==0&&resolution_next==0&&resolution_factor==1&&core_frames==frames_before);use_gpu=false;
+ puts("PASS frontend live resolution: immediate 1x/2x selection, saved settings and rollback on failure, no core execution/reset");
+ unsigned count_before=game_cheats.count;wide_profile=&nps64_wide_profiles[0];aspect_mode=NPS64_ASPECT_STRETCHED;widescreen=true;
+ unsigned slot_before=slot;aspect_change(false);assert(aspect_mode==NPS64_ASPECT_EXPERIMENTAL&&widescreen&&wide_enabled&&slot==slot_before);
+ Nps64GameSettings wide_saved;assert(nps64_game_settings_load(GAME_SETTINGS_DIR,current.key,&preferences.defaults,&wide_saved)&&wide_saved.aspect==NPS64_ASPECT_EXPERIMENTAL);
+ assert(game_cheats.count==count_before);aspect_change(false);assert(aspect_mode==NPS64_ASPECT_NATIVE&&!widescreen&&!wide_enabled);
+ aspect_change(true);assert(aspect_mode==NPS64_ASPECT_EXPERIMENTAL&&wide_enabled);aspect_change(true);assert(aspect_mode==NPS64_ASPECT_STRETCHED&&!wide_enabled&&wide_toggles==4);
+ assert(!strcmp(aspect_label(NPS64_ASPECT_EXPERIMENTAL),"16:9 experimental"));wide_profile=NULL;
+ aspect_change(false);assert(aspect_mode==NPS64_ASPECT_NATIVE&&!widescreen);
+ puts("PASS frontend live aspect: three modes, reverse cycling, per-ROM persistence, no slot change or visible cheat entry, unsupported profile skipped");
  puts("PASS frontend: sidebar, English default, live English/Spanish switch and persistence, cheat library/pause toggles and persistence, variant exclusion, general HUD, per-game isolation, launch and pause");return 0;
 }
