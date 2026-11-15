@@ -1,4 +1,5 @@
 #include "settings.h"
+#include "i18n.h"
 #include "storage.h"
 #include <stdio.h>
 #include <string.h>
@@ -16,9 +17,12 @@ static bool valid(const Nps64GameSettings *s){return s->slot<8 && s->controller_
 void nps64_settings_defaults(Nps64AppSettings *s){*s=(Nps64AppSettings){.hud_mode=2,.defaults={.filtered_vi=true,.resolution=1}};}
 bool nps64_settings_load(const char *path,Nps64AppSettings *out) {
     char text[256],format[20];nps64_settings_defaults(out);if(!read_text(path,text))return false;
-    unsigned t=0,w=0,slot=0,f=1,pak=0,hud=2,res=1;int end=0,n;
+    unsigned t=0,w=0,slot=0,f=1,pak=0,hud=2,res=1,language=NPS64_LANG_ENGLISH;int end=0,n;
     if(sscanf(text,"%19s",format)!=1)return false;
-    if(!strcmp(format,"NPS64CFG5")) {
+    if(!strcmp(format,"NPS64CFG6")) {
+        n=sscanf(text,"NPS64CFG6 %u %u %u %u %u %u %u %n",&t,&hud,&slot,&f,&pak,&res,&language,&end);
+        if(n!=7 || !tail(text+end) || hud>2 || res>1 || language>=NPS64_LANGUAGE_COUNT)return false;
+    } else if(!strcmp(format,"NPS64CFG5")) {
         n=sscanf(text,"NPS64CFG5 %u %u %u %u %u %u %n",&t,&hud,&slot,&f,&pak,&res,&end);
         if(n!=6 || !tail(text+end) || hud>2 || res>1)return false;
     } else if(!strcmp(format,"NPS64CFG4")) {
@@ -36,11 +40,11 @@ bool nps64_settings_load(const char *path,Nps64AppSettings *out) {
     } else return false;
     if(t>2 || slot>7 || f>1 || pak>2)return false;
     /* Legacy global aspect must not turn every unconfigured game into 16:9. */
-    *out=(Nps64AppSettings){.theme=t,.hud_mode=hud,.defaults={.filtered_vi=f!=0,.slot=slot,.controller_pak=pak,.resolution=res}};return true;
+    *out=(Nps64AppSettings){.theme=t,.hud_mode=hud,.language=language,.defaults={.filtered_vi=f!=0,.slot=slot,.controller_pak=pak,.resolution=res}};return true;
 }
 bool nps64_settings_save(const char *path,const Nps64AppSettings *s) {
-    if(s->theme>2 || s->hud_mode>2 || !valid(&s->defaults))return false;
-    char text[96];int n=snprintf(text,sizeof(text),"NPS64CFG5 %u %u %u %u %u %u\n",s->theme,s->hud_mode,s->defaults.slot,s->defaults.filtered_vi,s->defaults.controller_pak,s->defaults.resolution);
+    if(s->theme>2 || s->hud_mode>2 || s->language>=NPS64_LANGUAGE_COUNT || !valid(&s->defaults))return false;
+    char text[96];int n=snprintf(text,sizeof(text),"NPS64CFG6 %u %u %u %u %u %u %u\n",s->theme,s->hud_mode,s->defaults.slot,s->defaults.filtered_vi,s->defaults.controller_pak,s->defaults.resolution,s->language);
     return n>0 && n<(int)sizeof(text) && file_write_atomic(path,text,(size_t)n);
 }
 static bool game_path(char path[PATH_CAP],const char *dir,const char *key) {

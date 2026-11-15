@@ -46,13 +46,15 @@ void platform_poll(Input p[4]){
  case 31:pause_selected=PAUSE_CHOICES-3;p[0].buttons=BTN_RIGHT;break;
  case 32:assert(resolution_mode==0&&resolution_next==1);pause_selected=3;assert(!widescreen);p[0].buttons=BTN_DOWN;break;
  case 34:p[0].buttons=BTN_CONFIRM;break;
- case 36:assert(!running&&!covers_paused);assert(!strncmp(message,"Partida guardada",16));p[0].buttons=BTN_GAME_SETTINGS;break;
+ case 36:assert(!running&&!covers_paused);assert(!strcmp(message,nps64_tr("Partida guardada. Selecciona otro juego")));p[0].buttons=BTN_GAME_SETTINGS;break;
  case 38:assert(!editing_game.widescreen&&editing_game.resolution==1);p[0].buttons=BTN_BACK;break;
  case 40:p[0].buttons=BTN_LEFT;break;
  case 42:assert(sidebar_focus);p[0].buttons=BTN_DOWN;break;
  case 44:p[0].buttons=BTN_CONFIRM;break;
- case 46:assert(settings_page==1&&!sidebar_focus);p[0].buttons=BTN_EXIT;break;
- default:assert(tick<48);
+ case 46:assert(settings_page==1&&!sidebar_focus);assert(preferences.language==NPS64_LANG_ENGLISH);settings_row=8;p[0].buttons=BTN_CONFIRM;break;
+ case 48:assert(preferences.language==NPS64_LANG_SPANISH);assert(!strcmp(nps64_tr("Configuracion"),"Configuracion"));screenshot("build/settings-spanish.ppm");{Nps64AppSettings saved;assert(nps64_settings_load(CONFIG_PATH,&saved)&&saved.language==NPS64_LANG_SPANISH);}p[0].buttons=BTN_CONFIRM;break;
+ case 50:assert(preferences.language==NPS64_LANG_ENGLISH);assert(!strcmp(nps64_tr("Configuracion"),"Settings"));screenshot("build/settings-english.ppm");p[0].buttons=BTN_EXIT;break;
+ default:assert(tick<52);
  }
 }
 int main(void){
@@ -71,5 +73,5 @@ int main(void){
  preferences.hud_mode=0;game_hud_draw();assert(hud_lines==0&&detail_lines==0);
  preferences.hud_mode=1;game_hud_draw();assert(hud_lines==1&&detail_lines==0);
  preferences.hud_mode=2;game_hud_draw();assert(hud_lines==2&&detail_lines==1);free(native_frame);native_frame=NULL;
- puts("PASS frontend: sidebar, general HUD, per-game aspect isolation, launch, pause change and persistence");return 0;
+ puts("PASS frontend: sidebar, English default, live English/Spanish switch and persistence, general HUD, per-game isolation, launch and pause");return 0;
 }

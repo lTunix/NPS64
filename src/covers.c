@@ -1,5 +1,6 @@
 /* Background PNG cover cache. SPDX-License-Identifier: GPL-2.0-or-later */
 #include "covers.h"
+#include "i18n.h"
 #include "cover_match.h"
 #include "update_http.h"
 #include "platform.h"
@@ -72,7 +73,7 @@ void covers_request(const Game *game) {
     for(unsigned i=0;i<8;i++)if(!slot||slots[i].stamp<slot->stamp)slot=&slots[i];free(slot->pixels);*slot=(Slot){.stamp=++clock_id};snprintf(slot->name,sizeof(slot->name),"%s",game->name);
     snprintf(queue[count++],256,"%s",game->name);pthread_cond_signal(&ready);pthread_mutex_unlock(&mutex);
 }
-void covers_status(char *out,size_t cap){pthread_mutex_lock(&mutex);snprintf(out,cap,"%s",state);pthread_mutex_unlock(&mutex);}
+void covers_status(char *out,size_t cap){pthread_mutex_lock(&mutex);snprintf(out,cap,"%s",nps64_tr(state));pthread_mutex_unlock(&mutex);}
 void covers_set_paused(bool value){pthread_mutex_lock(&mutex);paused=value;if(!value)pthread_cond_signal(&ready);pthread_mutex_unlock(&mutex);}
 void covers_refresh(void){pthread_mutex_lock(&mutex);count=0;for(unsigned i=0;i<8;i++){free(slots[i].pixels);slots[i]=(Slot){0};}pthread_mutex_unlock(&mutex);}
 void covers_draw(const Game *game,int x,int y,int w,int h) {

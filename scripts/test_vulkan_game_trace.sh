@@ -12,7 +12,7 @@ clang++-21 -resource-dir=/work/build/tools/usr/lib/llvm-18/lib/clang/18 \
   -Isrc -Ivendor/parallel-n64/libretro-common/include \
   -Ivendor/parallel-n64/mupen64plus-core/src -Ivendor/parallel-n64/mupen64plus-core/src/api \
   -Ivendor/parallel-n64/mupen64plus-video-paraLLEl/parallel-rdp/vulkan-headers/include \
-  src/frontend.c src/settings.c src/gpu_vulkan.c src/gpu_api_trace.c src/gpu_compile_worker.c src/gpu_cache_store.c src/gpu_recipes.c src/gpu_crashlog.c src/sha256.c src/storage.c src/log.c tests/platform_vulkan_session.c \
+  src/frontend.c src/i18n.c src/settings.c src/gpu_vulkan.c src/gpu_api_trace.c src/gpu_compile_worker.c src/gpu_cache_store.c src/gpu_recipes.c src/gpu_crashlog.c src/sha256.c src/storage.c src/log.c tests/platform_vulkan_session.c \
   -x none "$core_dir/parallel_n64.a" -fuse-ld=lld -ldl -lm -lpthread -o build/bench-vulkan-game-00.31-asan
 BENCH_FRAMES=1000000 NPS64_GPU_NO_DEEPBIND=1 \
   ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1 \

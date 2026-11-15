@@ -11,7 +11,7 @@ int main(void){
  char root[]="/tmp/nps-settings-XXXXXX";assert(mkdtemp(root));char path[1024],dir[1024],gamepath[1024];
  snprintf(path,sizeof path,"%s/global.cfg",root);snprintf(dir,sizeof dir,"%s/games",root);
  const char *a="rom-0000000000000001",*b="rom-0000000000000002";
- Nps64AppSettings app,loaded;assert(!nps64_settings_load(path,&app));assert(app.hud_mode==2&&!app.defaults.widescreen&&app.defaults.filtered_vi);
+ Nps64AppSettings app,loaded;assert(!nps64_settings_load(path,&app));assert(app.language==0&&app.hud_mode==2&&!app.defaults.widescreen&&app.defaults.filtered_vi);
  const char *legacy[]={"NPS64CFG1 2 1 7\n","NPS64CFG2 2 1 7 0\n","NPS64CFG3 2 1 7 0 2\n"};
  for(unsigned i=0;i<3;i++){write_cfg(path,legacy[i]);assert(nps64_settings_load(path,&app));assert(app.theme==2&&app.defaults.slot==7&&!app.defaults.widescreen);}
  app.hud_mode=0;assert(nps64_settings_save(path,&app));assert(nps64_settings_load(path,&loaded));assert(loaded.hud_mode==0&&loaded.defaults.controller_pak==2);
@@ -30,5 +30,10 @@ int main(void){
  for(unsigned i=0;i<sizeof bad_res/sizeof *bad_res;i++){write_cfg(gamepath,bad_res[i]);assert(!nps64_game_settings_load(dir,b,&app.defaults,&gb));}
  app.defaults.resolution=0;assert(nps64_settings_save(path,&app));assert(nps64_settings_load(path,&loaded)&&loaded.defaults.resolution==0);
  write_cfg(path,"NPS64CFG5 0 2 0 1 0 2");assert(!nps64_settings_load(path,&loaded));
+ write_cfg(path,"NPS64CFG5 2 1 7 0 2 0");assert(nps64_settings_load(path,&loaded)&&loaded.language==0&&loaded.theme==2&&loaded.defaults.resolution==0);
+ app.language=1;assert(nps64_settings_save(path,&app));assert(nps64_settings_load(path,&loaded)&&loaded.language==1);
+ app.language=2;assert(!nps64_settings_save(path,&app));
+ const char *bad_lang[]={"NPS64CFG6 0 2 0 1 0 1 2","NPS64CFG6 0 2 0 1 0 1 -1","NPS64CFG6 0 2 0 1 0 1","NPS64CFG6 0 2 0 1 0 1 1 trailing"};
+ for(unsigned i=0;i<sizeof bad_lang/sizeof *bad_lang;i++){write_cfg(path,bad_lang[i]);assert(!nps64_settings_load(path,&loaded)&&loaded.language==0);}
  unlink(gamepath);rmdir(dir);unlink(path);rmdir(root);puts("PASS settings: migration, HUD, per-ROM isolation, reset and malformed input");return 0;
 }

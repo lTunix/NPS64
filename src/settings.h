@@ -3,7 +3,7 @@
 #define NPS64_SETTINGS_H
 #include <stdbool.h>
 typedef struct {bool widescreen,filtered_vi;unsigned slot,controller_pak,resolution;} Nps64GameSettings;
-typedef struct {unsigned theme,hud_mode;Nps64GameSettings defaults;} Nps64AppSettings;
+typedef struct {unsigned theme,hud_mode,language;Nps64GameSettings defaults;} Nps64AppSettings;
 void nps64_settings_defaults(Nps64AppSettings*);
 bool nps64_settings_load(const char*,Nps64AppSettings*);
 bool nps64_settings_save(const char*,const Nps64AppSettings*);

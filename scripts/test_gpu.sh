@@ -2,7 +2,7 @@
 set -euo pipefail
 cd /work
 python3 tests/make_test_rom.py
-clang-21 -std=c11 -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L -DNPS64_GPU -DNPS64_TEST_PS4_GPU_PROFILE -DDATA_ROOT='"/work/build/testdata"' -O2 -Wall -Wextra -Werror -Isrc -Ivendor/parallel-n64/libretro-common/include -Ivendor/parallel-n64/mupen64plus-core/src/api src/frontend.c src/gpu_vulkan.c src/settings.c src/storage.c src/log.c tests/platform_host.c tests/gpu_ready_wrap.c -Wl,--wrap=nps64_parallel_ready build/native-gpu/parallel_n64.a -lstdc++ -ldl -lm -lpthread -o build/test-gpu
+clang-21 -std=c11 -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L -DNPS64_GPU -DNPS64_TEST_PS4_GPU_PROFILE -DDATA_ROOT='"/work/build/testdata"' -O2 -Wall -Wextra -Werror -Isrc -Ivendor/parallel-n64/libretro-common/include -Ivendor/parallel-n64/mupen64plus-core/src/api src/frontend.c src/gpu_vulkan.c src/i18n.c src/settings.c src/storage.c src/log.c tests/platform_host.c tests/gpu_ready_wrap.c -Wl,--wrap=nps64_parallel_ready build/native-gpu/parallel_n64.a -lstdc++ -ldl -lm -lpthread -o build/test-gpu
 printf 'NPS64DIAG5 4 1 1 1 1\n' > build/testdata/diagnostics.cfg
 : > build/testdata/nps64.log
 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json timeout 120 build/test-gpu > build/gpu-functional-test.log 2>&1

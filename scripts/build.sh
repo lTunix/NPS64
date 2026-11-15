@@ -22,11 +22,11 @@ scripts/ps4-cc -std=c11 -O2 -Wall -Wextra -Isrc -c src/storage.c -o build/storag
 scripts/ps4-cc -std=c11 -O2 -Wall -Wextra -c src/third_party/ps4_malloc.c -o build/malloc.o
 scripts/ps4-cc -std=c11 -O2 -Wall -Wextra -c src/runtime_ps4.c -o build/runtime.o
 scripts/ps4-cc -std=c11 -O2 -Wall -Wextra -Isrc -c src/log.c -o build/log.o
-for name in updater update_feed update_http_ps4 sha256 cover_match covers library_ui; do
+for name in i18n updater update_feed update_http_ps4 sha256 cover_match covers library_ui; do
     scripts/ps4-cc -std=c11 -O2 -Wall -Wextra -Isrc -c "src/$name.c" -o "build/$name.o"
 done
 scripts/ps4-cc -std=c11 -O2 -Wall -Wextra -Isrc -c src/settings.c -o build/settings.o
-ld.lld -m elf_x86_64 -pie -z max-page-size=0x4000 --script scripts/ps4-link.x --eh-frame-hdr --wrap=pthread_once --wrap=mprotect -L"$sdk/lib" "$sdk/lib/crt1.o" build/frontend.o build/settings.o build/log.o build/platform.o build/storage.o build/malloc.o build/runtime.o build/updater.o build/update_feed.o build/update_http_ps4.o build/sha256.o build/cover_match.o build/covers.o build/library_ui.o build/core-jit/parallel_n64.a -lc -lm -lkernel -lSceLibcInternal -lSceVideoOut -lScePad -lSceUserService -lSceAudioOut -lSceSystemService -lSceSysmodule -lSceNet -lSceSsl -lSceHttp -o build/nps64.elf
+ld.lld -m elf_x86_64 -pie -z max-page-size=0x4000 --script scripts/ps4-link.x --eh-frame-hdr --wrap=pthread_once --wrap=mprotect -L"$sdk/lib" "$sdk/lib/crt1.o" build/frontend.o build/settings.o build/log.o build/platform.o build/storage.o build/malloc.o build/runtime.o build/i18n.o build/updater.o build/update_feed.o build/update_http_ps4.o build/sha256.o build/cover_match.o build/covers.o build/library_ui.o build/core-jit/parallel_n64.a -lc -lm -lkernel -lSceLibcInternal -lSceVideoOut -lScePad -lSceUserService -lSceAudioOut -lSceSystemService -lSceSysmodule -lSceNet -lSceSsl -lSceHttp -o build/nps64.elf
 "$sdk/bin/linux/create-fself" -in=build/nps64.elf -out=build/nps64.oelf --eboot build/stage/eboot.bin --paid 0x3800000000000011
 python3 scripts/check_elf.py
 python3 scripts/assets.py

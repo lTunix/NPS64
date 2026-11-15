@@ -19,7 +19,7 @@ if [ "${NPS64_GPU_EXPERIMENTAL:-0}" = 1 ]; then
     experimental=(-DNPS64_GPU_EXPERIMENTAL)
     export NPS64_VERSION=00.19
 fi
-for unit in frontend gpu_vulkan gpu_boot platform_ps4 storage runtime_ps4 log; do
+for unit in i18n settings frontend gpu_vulkan gpu_boot platform_ps4 storage runtime_ps4 log; do
     scripts/ps4-gpu-cc -DNPS64_GPU "${experimental[@]}" -std=c11 -O2 -Wall -Wextra "${includes[@]}" -c "src/$unit.c" -o "build/gpu/$unit.o"
 done
 scripts/ps4-gpu-cc -DNPS64_GPU -O2 -c src/third_party/ps4_malloc.c -o build/gpu/malloc.o
@@ -32,7 +32,7 @@ libs=(src/amd/vulkan/libvulkan_radeon.a src/amd/addrlib/libaddrlib.a
     src/util/libmesa_util_clflushopt.a src/util/libmesa_util_simd.a src/util/libparson.a
     src/util/libxmlconfig.a src/vulkan/util/libvulkan_util.a)
 archives=();for lib in "${libs[@]}"; do archives+=("$mesa/$lib");done
-ld.lld-21 -m elf_x86_64 -pie -z max-page-size=0x4000 --script scripts/ps4-gpu-link.x --eh-frame-hdr --wrap=pthread_once --wrap=mprotect -L"$sdk/lib" "$sdk/lib/crt1.o" build/gpu/{frontend,gpu_vulkan,gpu_boot,platform_ps4,storage,runtime_ps4,log,malloc,dlmalloc}.o --start-group build/core-gpu/parallel_n64.a --whole-archive "${archives[@]}" --no-whole-archive "$sysroot/lib/libc++.a" "$sysroot/lib/libc++abi.a" "$sdk/lib/libunwind.a" -lc -lm -lkernel -lSceLibcInternal -lSceVideoOut -lScePad -lSceUserService -lSceAudioOut -lSceSystemService -lSceSysmodule --end-group -o build/nps64.elf
+ld.lld-21 -m elf_x86_64 -pie -z max-page-size=0x4000 --script scripts/ps4-gpu-link.x --eh-frame-hdr --wrap=pthread_once --wrap=mprotect -L"$sdk/lib" "$sdk/lib/crt1.o" build/gpu/{i18n,settings,frontend,gpu_vulkan,gpu_boot,platform_ps4,storage,runtime_ps4,log,malloc,dlmalloc}.o --start-group build/core-gpu/parallel_n64.a --whole-archive "${archives[@]}" --no-whole-archive "$sysroot/lib/libc++.a" "$sysroot/lib/libc++abi.a" "$sdk/lib/libunwind.a" -lc -lm -lkernel -lSceLibcInternal -lSceVideoOut -lScePad -lSceUserService -lSceAudioOut -lSceSystemService -lSceSysmodule --end-group -o build/nps64.elf
 "$sdk/bin/linux/create-fself" -in=build/nps64.elf -out=build/nps64.oelf --eboot build/stage/eboot.bin --paid 0x3100000000000002 --authinfo 000000000000000000000000001C004000FF000000000080000000000000000000000000000000000000008000400040000000000000008000000000000000080040FFFF000000F000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 python3 scripts/check_elf.py
 python3 scripts/check_gpu_boot.py

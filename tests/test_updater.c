@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "updater.h"
+#include "i18n.h"
 #include "update_feed.h"
 #include "update_http.h"
 #include "sha256.h"
@@ -41,7 +42,7 @@ static void wait_done(char text[160]) {
     for(unsigned i=0;i<5000;i++){bool active;nps64_updater_status(text,160,&active);if(!active)return;usleep(1000);}assert(!"updater timed out");
 }
 static void run(int test_mode,const char *expected,bool file_expected) {
-    mode=test_mode;package_requests=0;nps64_updater_init();char text[160];wait_done(text);nps64_updater_shutdown();assert(strstr(text,expected));
+    mode=test_mode;package_requests=0;nps64_updater_init();char text[160];wait_done(text);nps64_updater_shutdown();assert(strstr(text,expected));nps64_language_set(NPS64_LANG_ENGLISH);char english[160];nps64_updater_status(english,sizeof(english),NULL);assert(*english&&strcmp(english,text));nps64_language_set(NPS64_LANG_SPANISH);
     assert((access(TARGET,F_OK)==0)==file_expected);assert(access(TARGET ".part",F_OK)!=0);
 }
 static void sha_vectors(void) {
@@ -62,6 +63,7 @@ static void feed_cases(void) {
     const char *invalid="[{\"tag_name\":\"v0.69.0\",\"draft\":false,\"assets\":[]}]";assert(nps64_release_find(invalid,strlen(invalid),"v0.68.0",&release)==-1);
 }
 int main(void) {
+    assert(nps64_language()==NPS64_LANG_ENGLISH);nps64_language_set(NPS64_LANG_SPANISH);
     sha_vectors();for(size_t i=0;i<sizeof(package);i++)package[i]=(unsigned char)(i*37);make_feed();feed_cases();mkdir(DIR,0777);unlink(TARGET);unlink(TARGET ".part");
     run(OFFLINE,"conectar",false);run(LIMITED,"limita",false);run(BAD_JSON,"incompleta",false);run(MISSING,"descargar",false);
     run(TRUNCATED,"incorrecta",false);run(CORRUPT,"incorrecta",false);run(OVERSIZE,"incorrecta",false);
