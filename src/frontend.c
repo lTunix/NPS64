@@ -118,6 +118,10 @@ static unsigned requested_cpu=1; /* 0 cached interpreter, 1 checked Ari64 JIT */
 extern int nps64_core_jit_supported(void);
 extern unsigned nps64_core_workers(void);
 extern void nps64_parallel_perf_take(double *,double *,double *,unsigned *) __attribute__((weak));
+extern void nps64_parallel_stage_log(void) __attribute__((weak));
+extern void nps64_parallel_flush_log(void) __attribute__((weak));
+extern void nps64_parallel_active_rows_log(void) __attribute__((weak));
+extern void nps64_parallel_batch_tuning_log(void) __attribute__((weak));
 extern void nps64_core_perf_take(double *,double *);
 extern void nps64_core_game_profile(unsigned) __attribute__((weak));
 double nps64_profile_time(void) { return platform_time(); }
@@ -412,7 +416,7 @@ static void hle_preview_draw(unsigned frame) {
         unsigned p=((y/2)*256+x/2)*4;
         fb[(y+104)*SCREEN_W+x+384]=0xff000000u|((uint32_t)hle_pixels[p]<<16)|((uint32_t)hle_pixels[p+1]<<8)|hle_pixels[p+2];
     }
-    platform_text(32,30,"NPS64 00.38 - Geometria real en Vulkan",0xffffffff,2);
+    platform_text(32,30,"NPS64 00.46 - Geometria real en Vulkan",0xffffffff,2);
     char text[120];
     if(nps64_hle_sequence_active)snprintf(text,sizeof(text),"Secuencia Vulkan: frame %u/64. Circulo: terminar.",frame+1);
     else snprintf(text,sizeof(text),"Ultimo frame Vulkan. Circulo: volver a la pausa.");
@@ -1042,21 +1046,21 @@ int main(void) {
     nps64_log("NPS64 by lTunix " NPS64_VERSION "; Vulkan; synchronous FullSync; audio recovery; no session cap\n");
 #elif defined(NPS64_GPU_GAME_TEST)
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.38.log");
-    nps64_log("NPS64 Vulkan Game Test 00.38; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.47.log");
+    nps64_log("NPS64 Vulkan Game Test 00.47; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
 #if defined(NPS64_GPU_GAME_TEST)
     nps64_log("[gpu] physical compute probes passed; game workloads still experimental\n");
 #elif defined(NPS64_HLE_GAME)
-    nps64_log("NPS64 00.38 Ari64 / Angrylion + Vulkan game geometry sequence\n");
+    nps64_log("NPS64 00.47 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
-    nps64_log("NPS64 00.38 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
+    nps64_log("NPS64 00.47 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.38 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.47 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.38 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.47 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
@@ -1415,6 +1419,10 @@ present_frame:
             perf_gpu_ms=1000*gpu_sum/perf_samples;perf_draw_ms=1000*draw_sum/perf_samples;perf_flip_ms=1000*flip_sum/perf_samples;
             nps64_log("[perf] state=%s fps=%.2f vi_fps=%.2f video_fps=%.2f target=%.2f speed_pct=%.1f cpu=%s workers=%u requested_workers=%u vi_mode=%s rdp_ms=%.3f vi_ms=%.3f poll_ms=%.3f core_ms=%.3f draw_ms=%.3f flip_ms=%.3f gpu_ms=%.3f pace_ms=%.3f sleep_over_ms=%.3f late=%u frames=%llu video=%d visible=%d\n",running?(paused?"pause":"game"):"library",ui_fps,game_fps,video_fps,av.timing.fps,av.timing.fps>0?100*game_fps/av.timing.fps:0,use_jit?"Ari64":"cached",nps64_core_workers(),diagnostic_workers,filtered_vi?"filtered":"fast",perf_rdp_ms,perf_vi_ms,perf_poll_ms,perf_core_ms,perf_draw_ms,perf_flip_ms,perf_gpu_ms,1000*pace_sum/perf_samples,1000*pace_overshoot_sum/perf_samples,late_frames,(unsigned long long)core_frames,first_video,visible_video);
             if(use_gpu && nps64_parallel_perf_take)nps64_log("[rdp-times] list_ms=%.3f vi_ms=%.3f fullsync_ms=%.3f fullsync_calls=%u list_includes_fullsync=1 vi_includes_readback=1\n",1000*rdp_sum/perf_samples,1000*vi_sum/perf_samples,1000*fullsync_sum/perf_samples,fullsync_calls);
+            if(use_gpu && nps64_parallel_stage_log)nps64_parallel_stage_log();
+            if(use_gpu && nps64_parallel_flush_log)nps64_parallel_flush_log();
+            if(use_gpu && nps64_parallel_active_rows_log)nps64_parallel_active_rows_log();
+            if(use_gpu && nps64_parallel_batch_tuning_log)nps64_parallel_batch_tuning_log();
             nps64_log("[log-queue] async=%u dropped=%u\n",nps64_log_async()!=0,nps64_log_dropped());
             nps64_log("[pacing] debt_clamps=%u core_peak_ms=%.3f rdp_peak_ms=%.3f\n",pace_clamps,1000*core_peak,1000*rdp_peak);
             Nps64GpuPerf transfer;nps64_gpu_perf_take(&transfer);

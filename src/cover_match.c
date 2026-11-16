@@ -18,11 +18,12 @@ static void normalized(const char *name,char out[256]) {
         if(len==3&&!strncasecmp(title+start,"the",3))continue;
         for(size_t k=start;k<i&&n<255;k++)out[n++]=(char)tolower((unsigned char)title[k]);
     }out[n]=0;
+    if(!strcmp(out,"1080teneightysnowboarding"))snprintf(out,256,"1080snowboarding");
     if(!strcmp(out,"007goldeneye")||!strcmp(out,"goldeneye007"))snprintf(out,256,"goldeneye");
 }
 static int region(const char *name) {
-    if(strstr(name,"(Europe)")||strstr(name,"(E)"))return 1;
-    if(strstr(name,"(USA)")||strstr(name,"(U)"))return 2;
+    if(strstr(name,"(Europe, Australia)")||strstr(name,"(Europe)")||strstr(name,"(E)"))return 1;
+    if(strstr(name,"(Japan, USA)")||strstr(name,"(USA)")||strstr(name,"(U)"))return 2;
     if(strstr(name,"(Japan)")||strstr(name,"(J)"))return 3;return 0;
 }
 bool cover_match(const char *catalog,const char *rom,char *filename,size_t cap) {

@@ -9,10 +9,12 @@ p.add_argument('--sdk',type=Path,default=ROOT/'toolchain/OpenOrbis/PS4Toolchain'
 p.add_argument('--gpu-present',action='store_true',help='Experimental GPU compositor and Vulkan-owned VideoOut buffers')
 p.add_argument('--test-updater',action='store_true',help='Exercise production update status in the isolated test app')
 p.add_argument('--public-release',action='store_true',help='Build the original app identity with updater and no diagnostic session cap')
+p.add_argument('--stage-timings',action='store_true',help='Diagnostic GPU timestamp queries; never for public releases')
 p.add_argument('--core-only',action='store_true')
 p.add_argument('--link-only',action='store_true')
 p.add_argument('--resume-core',action='store_true')
 args=p.parse_args()
+if args.stage_timings and args.public_release:p.error("Stage timing diagnostics cannot be a public release")
 # Direct presentation was validated on PS4 in diagnostic 00.32.
 if args.public_release:args.gpu_present=True
 work=args.reference_work.resolve();sdk=args.sdk.resolve();gpu=work/'gpu'
@@ -30,6 +32,14 @@ for name,compiler,extra in [('cc',cc,[]),('cxx',cxx,['-nostdinc++','-isystem',st
     wrapper.write_text('#!/bin/sh\nexec '+shlex.join([str(compiler),*base,*extra])+' "$@"\n')
     wrapper.chmod(0o755)
 if args.link_only:
+    run(['python3',ROOT/'scripts/patch_pipeline_demand.py',core])
+    run(['python3',ROOT/'scripts/patch_gpu_stage_timing.py',core])
+    run(['python3',ROOT/'scripts/patch_rdp_batch_stats.py',core])
+    run(['python3',ROOT/'scripts/patch_rdp_active_rows.py',core])
+    run(['python3',ROOT/'scripts/patch_rdp_batch_tuning.py',core])
+    run(['python3',ROOT/'scripts/patch_jit_mi_window.py',core])
+    run(['python3',ROOT/'scripts/patch_gsp_culldl.py',core])
+    run(['python3',ROOT/'scripts/patch_gsp_triangle_fast.py',core])
     run(['python3',ROOT/'scripts/patch_cheats.py',core])
     run(['python3',ROOT/'scripts/patch_vulkan_live_resolution.py',core])
     # The cheat API is exposed by this frontend: never link an older unsafe parser.
@@ -39,12 +49,20 @@ if not args.link_only:
     if not args.resume_core:
         shutil.copytree(ROOT/'vendor/parallel-n64',core,dirs_exist_ok=True,ignore=shutil.ignore_patterns('.git'))
         run(['python3',ROOT/'scripts/patch_core.py',core])
+    run(['python3',ROOT/'scripts/patch_jit_mi_window.py',core])
+    run(['python3',ROOT/'scripts/patch_gsp_culldl.py',core])
+    run(['python3',ROOT/'scripts/patch_gsp_triangle_fast.py',core])
     run(['python3',ROOT/'scripts/patch_vulkan_boot.py',core])
     run(['python3',ROOT/'scripts/patch_vulkan_safety.py',core])
     run(['python3',ROOT/'scripts/patch_vulkan_cache.py',core])
     run(['python3',ROOT/'scripts/patch_vulkan_recipes.py',core])
     run(['python3',ROOT/'scripts/patch_vulkan_async.py',core])
     run(['python3',ROOT/'scripts/patch_vulkan_perf.py',core])
+    run(['python3',ROOT/'scripts/patch_pipeline_demand.py',core])
+    run(['python3',ROOT/'scripts/patch_gpu_stage_timing.py',core])
+    run(['python3',ROOT/'scripts/patch_rdp_batch_stats.py',core])
+    run(['python3',ROOT/'scripts/patch_rdp_active_rows.py',core])
+    run(['python3',ROOT/'scripts/patch_rdp_batch_tuning.py',core])
     run(['python3',ROOT/'scripts/patch_vulkan_ring.py',core])
     run(['python3',ROOT/'scripts/patch_vulkan_live_resolution.py',core])
     run(['python3',ROOT/'scripts/trace_vulkan_core.py',core])
@@ -67,14 +85,14 @@ objects=[]
 for unit in ['cheats','i18n','settings','library_ui','covers','cover_match','update_http_ps4',*(['updater','update_feed'] if args.public_release or args.test_updater else []),'frontend',*(['gpu_presenter'] if args.gpu_present else []),'gpu_vulkan','gpu_pipeline_guard','gpu_compile_worker','gpu_api_trace','gpu_cache_store','gpu_recipes','gpu_crashlog','sha256','gpu_boot','platform_ps4','storage','runtime_ps4','log']:
     obj=build/(unit+'.o')
     stack_check=['-Wframe-larger-than=4096','-fstack-usage'] if unit in {'gpu_pipeline_guard','gpu_compile_worker','gpu_cache_store','gpu_recipes','gpu_crashlog','sha256'} else []
-    run([build/'cc',*(['-DNPS64_UPDATES'] if args.test_updater else []),*(['-DNPS64_GPU_PRESENT_TEST'] if args.gpu_present else []),*(['-DNPS64_PUBLIC_RELEASE','-DNPS64_UPDATES','-DNPS64_UI_VERSION="00.73"'] if args.public_release else ['-DNPS64_UI_VERSION="00.38"']),'-DNPS64_GPU','-DNPS64_GPU_GAME_TEST','-DNPS64_AUDIO_BUFFER_TEST','-DNPS64_AUDIO_HQ_TEST','-DNPS64_AUDIO_CLEAN_TEST','-DNPS64_IMAGE_SMOOTH_TEST','-DNPS64_INTERNAL_2X_TEST','-DNPS64_GPU_BORROW_TEST','-DNPS64_AUDIO_DIRECT_TEST','-DNPS64_AUDIO_RECOVERY_TEST','-DNPS64_HD_UI','-std=c11','-O2','-Wall','-Wextra','-Werror',
+    run([build/'cc',*(['-DNPS64_RDP_STAGE_TIMINGS'] if args.stage_timings else []),*(['-DNPS64_UPDATES'] if args.test_updater else []),*(['-DNPS64_GPU_PRESENT_TEST'] if args.gpu_present else []),*(['-DNPS64_PUBLIC_RELEASE','-DNPS64_UPDATES','-DNPS64_UI_VERSION="00.73"'] if args.public_release else ['-DNPS64_UI_VERSION="00.47"']),'-DNPS64_GPU','-DNPS64_GPU_GAME_TEST','-DNPS64_AUDIO_BUFFER_TEST','-DNPS64_AUDIO_HQ_TEST','-DNPS64_AUDIO_CLEAN_TEST','-DNPS64_IMAGE_SMOOTH_TEST','-DNPS64_INTERNAL_2X_TEST','-DNPS64_GPU_BORROW_TEST','-DNPS64_AUDIO_DIRECT_TEST','-DNPS64_AUDIO_RECOVERY_TEST','-DNPS64_HD_UI','-std=c11','-O2','-Wall','-Wextra','-Werror',
          *stack_check,*(['-DNPS64_LOG_ASYNC'] if unit=='log' else []),*(['-mssse3'] if unit=='frontend' else []),*(['-Wno-unused-function'] if unit=='covers' else []),
          '-I'+str(ROOT/'src'),'-I'+str(core/'libretro-common/include'),
          '-I'+str(core/'mupen64plus-core/src/api'),
          '-I'+str(core/'mupen64plus-video-paraLLEl/parallel-rdp/vulkan-headers/include'),
          '-c',ROOT/('src/'+unit+'.c'),'-o',obj]);objects.append(obj)
 for unit,extra in [('ps4_malloc',['-DNPS64_GPU','-DNPS64_GPU_GAME_TEST']),('ps4_dlmalloc',[])]:
-    obj=build/(unit+'.o');run([build/'cc',*extra,'-O2','-c',ROOT/('src/third_party/'+unit+'.c'),'-o',obj]);objects.append(obj)
+    obj=build/(unit+'.o');run([build/'cc',*(['-DNPS64_RDP_STAGE_TIMINGS'] if args.stage_timings else []),*extra,'-O2','-c',ROOT/('src/third_party/'+unit+'.c'),'-o',obj]);objects.append(obj)
 run([work/'llvm/usr/bin/ld.lld-18','-m','elf_x86_64','-pie','-z','max-page-size=0x4000','--script',
      ROOT/'scripts/ps4-gpu-link.x','--eh-frame-hdr','--wrap=pthread_once','--wrap=mprotect',
      '-L'+str(sdk/'lib'),sdk/'lib/crt1.o',*objects,'--start-group',core/'parallel_n64.a',

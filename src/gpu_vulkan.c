@@ -116,6 +116,10 @@ bool nps64_gpu_begin(void) {
     if(detailed_trace && setenv("RADV_PS4_TRACE","1",1))return false;
     const char *uber=getenv("NPS64_RDP_GAME_UBERSHADER");
     const char *sync=getenv("NPS64_RDP_SYNC_SHADER");
+#ifdef NPS64_RDP_STAGE_TIMINGS
+    if(setenv("PARALLEL_RDP_BENCH","2",1))return false;
+    nps64_log("[gpu-stage] diagnostic=1 timestamp_queries=1; performance comparison requires profiling off\n");
+#endif
     /* ACO scheduling off keeps the general split shader within the guard. */
     if(setenv("ACO_DEBUG","nosched",1))return false;
     nps64_log("[gpu] compiler profile ACO_DEBUG=nosched; resource limits unchanged\n");

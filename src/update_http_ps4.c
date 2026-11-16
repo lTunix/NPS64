@@ -23,6 +23,11 @@ static int load(enum OrbisSysModuleInternal module) {
     if(result)nps64_log("[update] module 0x%08x error=0x%08x\n",(unsigned)module,(unsigned)result);
     return result;
 }
+int nps64_http_set_timeout(Nps64Http *c,unsigned us){
+    if(c->template_id<0||!us)return -1;
+    return sceHttpSetResolveTimeOut(c->template_id,us)<0 || sceHttpSetConnectTimeOut(c->template_id,us)<0 ||
+           sceHttpSetSendTimeOut(c->template_id,us)<0 || update_receive_timeout(c->template_id,us)<0 ? -1:0;
+}
 int nps64_http_init(Nps64Http *c) {
     *c=(Nps64Http){.pool=-1,.ssl=-1,.http=-1,.template_id=-1,.connection=-1,.request=-1};
     if(load(ORBIS_SYSMODULE_INTERNAL_NET)||load(ORBIS_SYSMODULE_INTERNAL_SSL)||load(ORBIS_SYSMODULE_INTERNAL_HTTP))return -1;
@@ -36,10 +41,7 @@ int nps64_http_init(Nps64Http *c) {
     c->template_id=sceHttpCreateTemplate(c->http,"NPS64/" NPS64_VERSION " (lTunix/NPS64)",ORBIS_HTTP_VERSION_1_1,0);
     if(c->template_id<0)goto fail;
     if(update_redirect(c->template_id,1)<0 ||
-       sceHttpSetResolveTimeOut(c->template_id,10000000)<0 ||
-       sceHttpSetConnectTimeOut(c->template_id,10000000)<0 ||
-       sceHttpSetSendTimeOut(c->template_id,10000000)<0 ||
-       update_receive_timeout(c->template_id,10000000)<0 ||
+       nps64_http_set_timeout(c,10000000)<0 ||
        update_header_limit(c->template_id,32768)<0 ||
        /* Certificate, hostname, validity dates, known CA and SNI remain enabled. */
        sceHttpsEnableOption(c->template_id,0xbd)<0)goto fail;
