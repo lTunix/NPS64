@@ -18,6 +18,7 @@ static void normalized(const char *name,char out[256]) {
         if(len==3&&!strncasecmp(title+start,"the",3))continue;
         for(size_t k=start;k<i&&n<255;k++)out[n++]=(char)tolower((unsigned char)title[k]);
     }out[n]=0;
+    if(!strcmp(out,"waverace64kawasakijetski"))snprintf(out,256,"waverace64");
     if(!strcmp(out,"1080teneightysnowboarding"))snprintf(out,256,"1080snowboarding");
     if(!strcmp(out,"007goldeneye")||!strcmp(out,"goldeneye007"))snprintf(out,256,"goldeneye");
 }
