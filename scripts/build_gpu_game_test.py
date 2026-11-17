@@ -69,7 +69,7 @@ if not args.link_only:
     shutil.copyfile(ROOT/'src/rom_compat.h',core/'mupen64plus-core/src/main/nps64_rom_compat.h')
     make=['make','-C',core,'platform=unix','ARCH=x86_64','WITH_DYNAREC=x86_64','WANT_HACKTARUX=0',
           'HAVE_ARI64_X64=1','HAVE_OPENGL=0','HAVE_PARALLEL=1','HAVE_PARALLEL_RSP=0','HAVE_THR_AL=1',
-          'STATIC_LINKING=1','TARGET=parallel_n64.a','CPUOPTS=-O2 -DNDEBUG -DNPS64_COMPRESSED_MEMORY',
+          'STATIC_LINKING=1','TARGET=parallel_n64.a','CPUOPTS=-O3 -march=btver2 -mtune=btver2 -DNDEBUG -DNPS64_COMPRESSED_MEMORY',
           'GIT_VERSION=890323d','CC='+str(build/'cc'),'CXX='+str(build/'cxx'),'AR=ar']
     run([*make,'asm-defines-regen'])
     run([*make,'-j4'])
@@ -85,7 +85,7 @@ objects=[]
 for unit in ['cheats','i18n','settings','library_ui','covers','cover_match','update_http_ps4',*(['updater','update_feed'] if args.public_release or args.test_updater else []),'frontend',*(['gpu_presenter'] if args.gpu_present else []),'gpu_vulkan','gpu_pipeline_guard','gpu_compile_worker','gpu_api_trace','gpu_cache_store','gpu_recipes','gpu_crashlog','sha256','gpu_boot','platform_ps4','storage','runtime_ps4','log']:
     obj=build/(unit+'.o')
     stack_check=['-Wframe-larger-than=4096','-fstack-usage'] if unit in {'gpu_pipeline_guard','gpu_compile_worker','gpu_cache_store','gpu_recipes','gpu_crashlog','sha256'} else []
-    run([build/'cc',*(['-DNPS64_RDP_STAGE_TIMINGS'] if args.stage_timings else []),*(['-DNPS64_UPDATES'] if args.test_updater else []),*(['-DNPS64_GPU_PRESENT_TEST'] if args.gpu_present else []),*(['-DNPS64_PUBLIC_RELEASE','-DNPS64_UPDATES','-DNPS64_UI_VERSION="00.73"'] if args.public_release else ['-DNPS64_UI_VERSION="00.47"']),'-DNPS64_GPU','-DNPS64_GPU_GAME_TEST','-DNPS64_AUDIO_BUFFER_TEST','-DNPS64_AUDIO_HQ_TEST','-DNPS64_AUDIO_CLEAN_TEST','-DNPS64_IMAGE_SMOOTH_TEST','-DNPS64_INTERNAL_2X_TEST','-DNPS64_GPU_BORROW_TEST','-DNPS64_AUDIO_DIRECT_TEST','-DNPS64_AUDIO_RECOVERY_TEST','-DNPS64_HD_UI','-std=c11','-O2','-Wall','-Wextra','-Werror',
+    run([build/'cc',*(['-DNPS64_RDP_STAGE_TIMINGS'] if args.stage_timings else []),*(['-DNPS64_UPDATES'] if args.test_updater else []),*(['-DNPS64_GPU_PRESENT_TEST'] if args.gpu_present else []),*(['-DNPS64_PUBLIC_RELEASE','-DNPS64_UPDATES','-DNPS64_UI_VERSION="00.73"'] if args.public_release else ['-DNPS64_UI_VERSION="00.49"']),'-DNPS64_GPU','-DNPS64_GPU_GAME_TEST','-DNPS64_AUDIO_BUFFER_TEST','-DNPS64_AUDIO_HQ_TEST','-DNPS64_AUDIO_CLEAN_TEST','-DNPS64_IMAGE_SMOOTH_TEST','-DNPS64_INTERNAL_2X_TEST','-DNPS64_GPU_BORROW_TEST','-DNPS64_AUDIO_DIRECT_TEST','-DNPS64_AUDIO_RECOVERY_TEST','-DNPS64_HD_UI','-std=c11','-O3','-march=btver2','-mtune=btver2','-Wall','-Wextra','-Werror',
          *stack_check,*(['-DNPS64_LOG_ASYNC'] if unit=='log' else []),*(['-mssse3'] if unit=='frontend' else []),*(['-Wno-unused-function'] if unit=='covers' else []),
          '-I'+str(ROOT/'src'),'-I'+str(core/'libretro-common/include'),
          '-I'+str(core/'mupen64plus-core/src/api'),

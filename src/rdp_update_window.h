@@ -16,7 +16,8 @@ static inline Nps64RdpUpdateWindow nps64_rdp_update_window(uint32_t color,
     if (pixel_size_log2 != 1 || ((color | depth) & 3) || !width ||
         first_row >= height || width > 1024 || height > 1024)
         return w;
-    first_row &= ~3u;
+    if (width & 1u)
+        first_row &= ~1u;
     uint32_t offset = first_row * width * 2;
     w.color += offset;
     w.depth += offset;

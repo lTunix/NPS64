@@ -10,7 +10,7 @@ p.add_argument('--public-release',action='store_true')
 p.add_argument('--reference-work',type=Path,required=True)
 p.add_argument('--sdk',type=Path,required=True)
 args=p.parse_args();work=args.reference_work.resolve();sdk=args.sdk.resolve()
-version='00.73' if args.public_release else '00.47'
+version='00.73' if args.public_release else '00.49'
 build=ROOT/'build/gpu-game-test';stage=build/'stage';(stage/'sce_sys/about').mkdir(parents=True,exist_ok=True)
 (stage/'sce_module').mkdir(exist_ok=True)
 env=dict(os.environ,OO_PS4_TOOLCHAIN=str(sdk),DOTNET_SYSTEM_GLOBALIZATION_INVARIANT='1')
@@ -54,9 +54,10 @@ for source,dest in [(ROOT/'LICENSE','LICENSE.txt'),(ROOT/'docs/CREDITS.md','CRED
     'PS4 correctness, frame pacing and performance require hardware testing before any release.\n'
     'Keeps three VideoOut buffers, cached readback and 600-second session pause. X: normal launch.\n'
     'Reads /data/NPS64/games; isolated saves: /data/NPS64/vulkan-test-saves.\n'
-    'Main log: /data/NPS64/vulkan-game-test.log; fatal log: /data/NPS64/vulkan-game-crash-00.47.log.\n'
+    'Main log: /data/NPS64/vulkan-game-test.log; fatal log: /data/NPS64/vulkan-game-crash-00.49.log.\n'
     'Tennis USA/VC boot passed native testing; PS4 validation pending. Audio uses direct FIFO after sinc32 in this comparison. No ROMs included. No GitHub release.\n')
 notes=stage/'TEST-NOTES.txt'
+notes.write_text('00.49: 32-pass/512-prim microbatch coalescing (-44.7% Vulkan submissions in Mario Tennis) and PS4 Jaguar (-O3 -march=btver2 -mtune=btver2) CPU compilation for Ari64 helpers, RSP HLE, and rdp_emit. Preserve FIFO ordering, resource limits, FullSync, barriers, effects and 2x quality. Physical validation pending.\n'+notes.read_text())
 notes.write_text('00.47: 2D active tile/meta-tile bounding via vkCmdDispatchBase for submit_tile_binning_combined and submit_depth_blend; SSE2 movemask fast path for masked readback memcpy. Preserve FIFO ordering, resource limits, FullSync, barriers, effects and 2x quality. Physical validation pending.\n'+notes.read_text())
 notes.write_text('00.46: keep native/2x render pairs together; bounded microbatch submission policy; skip redundant indirect-buffer reset dispatches in texture-only passes. Preserve FIFO ordering, resource limits, FullSync, barriers, effects and 2x quality. Includes RDP submission counters; GPU timestamp queries disabled. Physical validation pending.\n'+notes.read_text())
 notes.write_text('00.37: Options Exit/Salir hint in library; native/2x resolution changes live while paused, without ROM reload or CPU state reset. RDP/TMEM state, canonical memory and FullSync retained; native mode rasterizes at 1x. New hardware validation pending.\n'+notes.read_text())
@@ -80,7 +81,7 @@ for key,(kind,size,value) in values.items():run([tool,'sfo_setentry',sfo,key,'--
 files=sorted(str(f.relative_to(stage)) for f in stage.rglob('*') if f.is_file() and f.suffix!='.gp4')
 run([tools/'create-gp4','-out','test.gp4','--content-id='+content,'--files',' '.join(files)],cwd=stage)
 run([tool,'pkg_build','test.gp4',ROOT/'out'],cwd=stage)
-pkg=ROOT/'out'/('NPS64-by-lTunix-'+version+'.pkg' if args.public_release else 'NPS64-Vulkan-Game-Test-00.47.pkg');shutil.copyfile(ROOT/'out'/(content+'.pkg'),pkg)
+pkg=ROOT/'out'/('NPS64-by-lTunix-'+version+'.pkg' if args.public_release else f'NPS64-Vulkan-Game-Test-{version}.pkg');shutil.copyfile(ROOT/'out'/(content+'.pkg'),pkg)
 with (build/'pkg-validation.log').open('w') as stream:run([tool,'pkg_validate','--verbose',pkg],stdout=stream)
 checks=[x for x in (build/'pkg-validation.log').read_text().splitlines() if x.startswith('[')]
 assert len(checks)>20 and all(x.startswith('[OK]') for x in checks)

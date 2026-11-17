@@ -175,6 +175,22 @@ bool nps64_active_tiles_enabled()
     nps64_active_blend_tiles.fetch_add(uint64_t(tile_win.count_tile_x) * tile_win.count_tile_y, std::memory_order_relaxed);
     cmd.dispatch_base(tile_win.first_tile_x, tile_win.first_tile_y, 0,
                       tile_win.count_tile_x, tile_win.count_tile_y, 1);''')
+ anchor='    const auto window=nps64_rdp_update_window(fb.addr,fb.depth_addr,fb.width,'
+ assert s.count(anchor)==1
+ hs=(d/'rdp_renderer.hpp').read_text()
+ if 'nps64_indirect_initialized' not in hs:
+  old_hdr='\tVulkan::BufferHandle indirect_dispatch_buffer;'
+  assert hs.count(old_hdr)==1
+  (d/'rdp_renderer.hpp').write_text(hs.replace(old_hdr,old_hdr+'\n\tbool nps64_indirect_initialized = false;'))
+ old_clr_disp='\tcmd.dispatch(Limits::MaxStaticRasterizationStates / ImplementationConstants::DefaultWorkgroupSize, 1, 1);'
+ assert s.count(old_clr_disp)==1
+ s=s.replace(old_clr_disp,'''    uint32_t max_groups = Limits::MaxStaticRasterizationStates / ImplementationConstants::DefaultWorkgroupSize;
+    uint32_t nps64_states = nps64_indirect_initialized ? uint32_t(stream.static_raster_state_cache.size()) : Limits::MaxStaticRasterizationStates;
+    nps64_indirect_initialized = true;
+    uint32_t groups = (nps64_active_tiles_enabled() && nps64_states > 0) ?
+        std::min(max_groups, (nps64_states + ImplementationConstants::DefaultWorkgroupSize - 1u) / ImplementationConstants::DefaultWorkgroupSize) :
+        max_groups;
+    cmd.dispatch(groups, 1, 1);''')
  anchor='    stream.nps64_first_active_row = Limits::MaxHeight;';assert s.count(anchor)==1
  s=s.replace(anchor,anchor+'\n    stream.nps64_first_active_col = Limits::MaxWidth;\n    stream.nps64_end_active_col = 0;')
  p.write_text(s)
