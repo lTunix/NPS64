@@ -1,3 +1,7 @@
+#ifdef NPS64_FRAME_CAPTURE_TEST
+#include "frame_capture.h"
+#endif
+#include "rom_render_policy.h"
 /* NPS64 PS4 frontend. SPDX-License-Identifier: GPL-2.0-or-later */
 #include "platform.h"
 #include "storage.h"
@@ -88,7 +92,7 @@ static Input pads[4];
 static bool running,paused,quit_requested,options_dirty,core_shutdown;
 #if defined(NPS64_GPU_GAME_TEST) && !defined(NPS64_PUBLIC_RELEASE)
 #ifndef NPS64_GAME_TEST_SECONDS
-#define NPS64_GAME_TEST_SECONDS 600.0
+#define NPS64_GAME_TEST_SECONDS 0.0
 #endif
 static double game_test_started;
 static double game_test_wall_limit=NPS64_GAME_TEST_SECONDS;
@@ -119,6 +123,7 @@ extern int nps64_core_jit_supported(void);
 extern unsigned nps64_core_workers(void);
 extern void nps64_parallel_perf_take(double *,double *,double *,unsigned *) __attribute__((weak));
 extern void nps64_parallel_stage_log(void) __attribute__((weak));
+extern void nps64_parallel_set_safe_tiles(unsigned) __attribute__((weak));
 extern void nps64_parallel_flush_log(void) __attribute__((weak));
 extern void nps64_parallel_active_rows_log(void) __attribute__((weak));
 extern void nps64_parallel_batch_tuning_log(void) __attribute__((weak));
@@ -657,6 +662,12 @@ static void state_action(bool load) {
     char suffix[32],path[PATH_CAP]; snprintf(suffix,sizeof(suffix),".slot%u.state",slot); save_path(path,suffix);
     bool ok=load ? (state_read(path,current.key,p,n) && retro_unserialize(p,n)) : (retro_serialize(p,n) && state_write(path,current.key,p,n));
     free(p); platform_audio_clear();
+#ifdef NPS64_FRAME_CAPTURE_TEST
+    if(ok&&load) {
+        bool armed=nps64_frame_capture_arm(DATA_ROOT "/frame-captures",current.key,SCREEN_W,SCREEN_H,"savestate");
+        nps64_log("[frame-capture] state_load_arm=%u\n",armed);
+    }
+#endif
 #ifdef NPS64_HLE_GAME
     if(ok&&load){hle_frame_ready=false;memset(hle_scanouts,0,sizeof(hle_scanouts));hle_display_vi.width=0;}
 #endif
@@ -790,11 +801,13 @@ static bool start_game(void) {
 #ifdef NPS64_GPU_GAME_TEST
     if(!use_gpu){notify(nps64_tr("No se pudo iniciar Vulkan. Consulta vulkan-game-test.log"));return false;}
 #endif
-    if(nps64_core_game_profile) {
-        uint8_t header[64];unsigned profile=0;
+    if(nps64_core_game_profile || nps64_parallel_set_safe_tiles) {
+        uint8_t header[64];unsigned profile=0;bool safe_tiles=false;
         FILE *rom=fopen(current.path,"rb");
-        if(rom){size_t size=fread(header,1,sizeof(header),rom);fclose(rom);profile=nps64_cpu_profile_header(header,size);}
-        nps64_core_game_profile(profile);
+        if(rom){size_t size=fread(header,1,sizeof(header),rom);fclose(rom);profile=nps64_cpu_profile_header(header,size);safe_tiles=nps64_rom_needs_full_tiles(header,size);}
+        if(nps64_core_game_profile)nps64_core_game_profile(profile);
+        if(nps64_parallel_set_safe_tiles)nps64_parallel_set_safe_tiles(safe_tiles);
+        nps64_log("[rdp-compat] full_tiles=%u header_match=%s\n",safe_tiles,safe_tiles?"MARIOKART64":"none");
         nps64_log("[cpu-profile] %s\n",profile?"zelda-pal-gc reciprocal lanes":"standard lanes");
     }
     struct retro_game_info info={current.path,NULL,0,NULL};
@@ -855,6 +868,9 @@ static bool start_game(void) {
     notify(bad_save?nps64_tr("Partida no cargada; original conservado. Revisa el registro"):nps64_tr("L3 + R3: pausa / estados / volver a biblioteca")); return true;
 }
 static void stop_game(void) {
+#ifdef NPS64_FRAME_CAPTURE_TEST
+    nps64_frame_capture_finish();
+#endif
 #if defined(NPS64_GPU_GAME_TEST) && !defined(NPS64_PUBLIC_RELEASE)
     nps64_log("[gpu-test] stop VI=%llu elapsed_s=%.3f limit_reached=%u\n",
         (unsigned long long)core_frames,platform_time()-game_test_started,game_test_limit_reached);
@@ -1046,21 +1062,21 @@ int main(void) {
     nps64_log("NPS64 by lTunix " NPS64_VERSION "; Vulkan; synchronous FullSync; audio recovery; no session cap\n");
 #elif defined(NPS64_GPU_GAME_TEST)
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.49.log");
-    nps64_log("NPS64 Vulkan Game Test 00.49; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; limit=600 wall seconds; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.52.log");
+    nps64_log("NPS64 Vulkan Game Test 00.52; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; session cap disabled; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
 #if defined(NPS64_GPU_GAME_TEST)
     nps64_log("[gpu] physical compute probes passed; game workloads still experimental\n");
 #elif defined(NPS64_HLE_GAME)
-    nps64_log("NPS64 00.49 Ari64 / Angrylion + Vulkan game geometry sequence\n");
+    nps64_log("NPS64 00.52 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
-    nps64_log("NPS64 00.49 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
+    nps64_log("NPS64 00.52 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.49 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.52 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.49 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.52 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
@@ -1147,6 +1163,18 @@ int main(void) {
     while(!quit_requested) {
         double loop_start=platform_time(),core_elapsed=0,gpu_elapsed=0;
         platform_poll(pads); uint32_t held=pads[0].buttons,pressed=held&~previous; previous=held;
+#ifdef NPS64_FRAME_CAPTURE_TEST
+        static bool capture_chord;
+        bool capture_held=(held&(BTN_UPDATE|BTN_GAME_SETTINGS|BTN_HELP))==(BTN_UPDATE|BTN_GAME_SETTINGS|BTN_HELP);
+        if(running && capture_held && !capture_chord) {
+            bool armed=nps64_frame_capture_arm(DATA_ROOT "/frame-captures",current.key,SCREEN_W,SCREEN_H,"L2+R2+Triangle");
+            notify(armed?"Captura preparada: 16 cuadros. Reanuda si esta en pausa.":"Captura ocupada o sin memoria. Consulta el log.");
+        }
+        capture_chord=capture_held;
+        if(capture_held){held&=~(BTN_UPDATE|BTN_GAME_SETTINGS|BTN_HELP);pressed&=~(BTN_UPDATE|BTN_GAME_SETTINGS|BTN_HELP);pads[0].joy=0;}
+        int capture_result=nps64_frame_capture_result();
+        if(capture_result)notify(capture_result>0?"Capturas guardadas. Comparte los logs.":"Error guardando capturas. Consulta el log.");
+#endif
         double poll_elapsed=platform_time()-loop_start;
         if(pressed) nps64_log("[input] raw=%08x pressed=%04x running=%d paused=%d test=%d\n",pads[0].raw_buttons,pressed,running,paused,input_test);
         double now=platform_time();
@@ -1300,7 +1328,7 @@ int main(void) {
             }
 #if defined(NPS64_GPU_GAME_TEST) && !defined(NPS64_PUBLIC_RELEASE)
             /* Wall-clock cap per load. Manual resume cannot bypass an expired cap. */
-            if(running && !game_test_limit_reached && platform_time()-game_test_started>=game_test_wall_limit) {
+            if(running && game_test_wall_limit>0 && !game_test_limit_reached && platform_time()-game_test_started>=game_test_wall_limit) {
                 game_test_limit_reached=true;paused=true;pause_selected=4;platform_audio_clear();
                 nps64_log("[gpu-test] LIMIT reached elapsed_s=%.3f VI=%llu; no further retro_run until another load\n",
                     platform_time()-game_test_started,(unsigned long long)core_frames);
@@ -1356,6 +1384,9 @@ int main(void) {
 #else
                 game_video_draw();
 #endif
+#ifdef NPS64_FRAME_CAPTURE_TEST
+                if(!paused && !cheat_screen && visible_video)nps64_frame_capture_before(platform_framebuffer(),core_frames,video_frames,native_width,native_height,resolution_mode?2u:1u);
+#endif
                 game_hud_draw();
                 if(cheat_screen)cheats_draw();
                 else if(paused) pause_draw();
@@ -1384,6 +1415,9 @@ present_frame:
         }
         double draw_elapsed=platform_time()-draw_start-core_elapsed;
         double flip_start=platform_time();
+#if defined(NPS64_FRAME_CAPTURE_TEST) && !defined(__ORBIS__)
+        nps64_frame_capture_after(platform_framebuffer());
+#endif
         if(!platform_present()) { notify(nps64_tr("Error presentando imagen")); break; }
         double presented_at=platform_time();
         if(measuring_game){
@@ -1467,6 +1501,9 @@ present_frame:
     nps64_hle_renderer_release(hle_renderer);
 #endif
     nps64_cheats_free(&game_cheats);
+#ifdef NPS64_FRAME_CAPTURE_TEST
+    nps64_frame_capture_shutdown();
+#endif
     config_save(); platform_shutdown(); free(native_frame); nps64_log("[exit] cleanup complete; requesting platform close\n");nps64_log_close();
     if(platform_exit)platform_exit();
     return 0;
