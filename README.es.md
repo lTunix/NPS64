@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/lTunix/NPS64/releases/latest"><img src="assets/readme/download-es.svg" alt="Descargar el ultimo PKG" height="44"></a>
-  <a href="docs/RELEASE-00.74.md"><img src="assets/readme/notes-es.svg" alt="Novedades de la version" height="44"></a>
+  <a href="docs/RELEASE-00.75.md"><img src="assets/readme/notes-es.svg" alt="Novedades de la version" height="44"></a>
   <a href="https://github.com/lTunix/NPS64/issues"><img src="assets/readme/issue-es.svg" alt="Reportar un error" height="44"></a>
   <a href="https://www.paypal.com/donate/?hosted_button_id=XMVFTFEQKX8Q8"><img src="assets/readme/donate-es.svg" alt="Donar con PayPal" height="44"></a>
 </p>
@@ -54,14 +54,14 @@ Los juegos compatibles con Rumble Pak pueden hacer vibrar el mando. Está activa
 
 En la biblioteca, **Options** sale de NPS64; durante la partida conserva su función de Start de Nintendo 64.
 
-## Novedades de 00.74
+## Novedades de 00.75
 
-- Menos trabajo de renderizado Vulkan y de geometría de CPU, con mejoras de rendimiento a 2× sin retirar efectos.
-- Army Men inicia con su ruta gráfica rápida aunque sea el primer juego abierto. La última optimización mejora su ejecución, pero todavía presenta tirones y bajones en algunas escenas.
-- Correcciones de arranque para 1080 Snowboarding y Excitebike 64.
-- Corrección del parpadeo de profundidad/texturas observado en Mario Kart 64, especialmente en Choco Mountain.
-- Las carátulas ausentes ya no bloquean la recuperación de las siguientes; mejor reconocimiento de Wave Race 64.
-- Icono actualizado. [Lista completa de cambios](docs/RELEASE-00.74.md).
+- Biblioteca renovada con carrusel animado de cartuchos 3D, carátulas integradas y reflejos.
+- Nuevo diseño de fondos, emblema, tarjetas de acciones, menús y botones, adaptado a inglés y español.
+- Navegación por la biblioteca con la cruceta y cambio de página con L1/R1; accesos a ajustes generales y por juego.
+- Las actualizaciones disponibles muestran una ventana para **Descargar** o **Más tarde**. La descarga muestra progreso, permite cancelar y presenta el resultado o la opción de reintentar.
+- El PKG se verifica antes de quedar listo en `/data/pkg`; su instalación sigue siendo manual.
+- Conserva las mejoras de emulación de 00.74. [Notas completas](docs/RELEASE-00.75.md).
 
 ### Pendientes conocidos
 
@@ -72,7 +72,7 @@ En la biblioteca, **Options** sale de NPS64; durante la partida conserva su func
 
 ## Idioma
 
-La **00.74** usa **inglés por defecto**. En **Settings → Language**, elige **English** o **Espanol**; el cambio se aplica inmediatamente y se guarda al cerrar la app. Los ajustes antiguos conservan sus opciones y comienzan en inglés. Este ajuste cambia la interfaz de NPS64, no el idioma de las ROMs.
+La **00.75** usa **inglés por defecto**. En **Settings → Language**, elige **English** o **Espanol**; el cambio se aplica inmediatamente y se guarda al cerrar la app. Los ajustes antiguos conservan sus opciones y comienzan en inglés. Este ajuste cambia la interfaz de NPS64, no el idioma de las ROMs.
 
 
 ## Ajustes de imagen

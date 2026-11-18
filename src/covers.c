@@ -189,6 +189,17 @@ void covers_draw(const Game *game,int x,int y,int w,int h){
     }
     image_release(image);
 }
+const uint32_t *covers_acquire(const Game *game,int *w,int *h,void **handle){
+    if(w)*w=0;if(h)*h=0;if(handle)*handle=NULL;
+    if(!game)return NULL;
+    pthread_mutex_lock(&mutex);CoverImage *image=NULL;
+    for(unsigned i=0;i<8;i++)if(!strcmp(slots[i].name,game->name)&&slots[i].image){image=slots[i].image;__atomic_add_fetch(&image->references,1,__ATOMIC_RELAXED);break;}
+    pthread_mutex_unlock(&mutex);
+    if(!image)return NULL;
+    if(w)*w=image->w;if(h)*h=image->h;if(handle)*handle=image;
+    return image->pixels;
+}
+void covers_release(void *handle){image_release((CoverImage*)handle);}
 void covers_shutdown(void){
     pthread_mutex_lock(&mutex);stop=true;pthread_cond_broadcast(&ready);pthread_cond_broadcast(&network_ready);pthread_mutex_unlock(&mutex);
     if(started){pthread_join(thread,NULL);started=false;}if(network_started){pthread_join(network_thread,NULL);network_started=false;}

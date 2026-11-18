@@ -161,8 +161,29 @@ static const uint32_t accent[]={0xff48dac1,0xffa18aff,0xff62b4ff};
 static void menu_draw(void);
 
 #ifdef NPS64_UPDATES
-static bool update_status_selected=true;
-static void request_updates(void){update_status_selected=true;nps64_updater_request();}
+static bool update_status_selected=true, update_modal_requested=false;
+static void request_updates(void){update_status_selected=true;update_modal_requested=true;nps64_updater_request();}
+static bool update_modal_visible(Nps64UpdaterInfo *out){
+    Nps64UpdaterInfo info;nps64_updater_info(&info);
+    if(out)*out=info;
+    if(info.state==NPS64_UPDATER_AVAILABLE && !info.dismissed)return true;
+    if(info.state==NPS64_UPDATER_DOWNLOADING)return true;
+    if(update_modal_requested && (info.state==NPS64_UPDATER_READY || info.state==NPS64_UPDATER_ERROR))return true;
+    return false;
+}
+static bool update_modal_handle(unsigned pressed){
+    Nps64UpdaterInfo info;
+    if(!update_modal_visible(&info))return false;
+    if(pressed&BTN_CONFIRM){
+        if(info.state==NPS64_UPDATER_AVAILABLE){update_modal_requested=true;nps64_updater_confirm();}
+        else if(info.state==NPS64_UPDATER_ERROR){update_modal_requested=true;nps64_updater_request();}
+        else if(info.state==NPS64_UPDATER_READY){update_modal_requested=false;nps64_updater_dismiss();}
+    }else if(pressed&BTN_BACK){
+        if(info.state==NPS64_UPDATER_DOWNLOADING){update_modal_requested=false;nps64_updater_cancel();}
+        else{update_modal_requested=false;nps64_updater_dismiss();}
+    }
+    return true;
+}
 #endif
 static void notify(const char *text) {
 #ifdef NPS64_UPDATES
@@ -977,9 +998,23 @@ static void menu_draw(void) {
         return;
     }
 #ifdef NPS64_HD_UI
-    if(settings_page){settings_draw();return;}
-    char update[160];
-    library_ui_draw(games,game_count,selected,accent[theme],current_message(update,sizeof update),"",sidebar_focus,sidebar_selected);
+    if(settings_page){settings_draw();goto maybe_modal;}
+    char update[160], badge[96]="";
+#ifdef NPS64_UPDATES
+    {
+        Nps64UpdaterInfo uinfo;nps64_updater_info(&uinfo);
+        if(uinfo.state==NPS64_UPDATER_AVAILABLE)snprintf(badge,sizeof(badge),"%s %s",nps64_tr("Actualizacion disponible"),uinfo.tag);
+        else if(uinfo.state==NPS64_UPDATER_READY)snprintf(badge,sizeof(badge),"%s",nps64_tr("Actualizacion lista"));
+    }
+#endif
+    library_ui_draw(games,game_count,selected,accent[theme],current_message(update,sizeof update),badge,sidebar_focus,sidebar_selected);
+maybe_modal:
+#ifdef NPS64_UPDATES
+    {
+        Nps64UpdaterInfo uinfo;
+        if(update_modal_visible(&uinfo))library_ui_modal(&uinfo,accent[theme]);
+    }
+#endif
     return;
 #endif
     if(settings_page){settings_draw();return;}
@@ -1008,7 +1043,15 @@ static void menu_draw(void) {
 }
 static void pause_draw(void) {
 #ifdef NPS64_HD_UI
+#ifdef NPS64_UPDATES
+    if(platform_overlay_begin){
+        Nps64UpdaterInfo uinfo;
+        if(update_modal_visible(&uinfo))platform_overlay_begin(0,0,SCREEN_W,SCREEN_H);
+        else platform_overlay_begin(272,80,736,576);
+    }
+#else
     if(platform_overlay_begin)platform_overlay_begin(272,80,736,576);
+#endif
 #else
     if(platform_overlay_begin)platform_overlay_begin(0,80,SCREEN_W,SCREEN_H-80);
 #endif
@@ -1030,6 +1073,12 @@ static void pause_draw(void) {
     nps64_updater_status(updates,sizeof(updates),NULL);
 #endif
     library_ui_pause(labels,PAUSE_CHOICES,pause_selected,slot,accent[theme],message,updates);
+#ifdef NPS64_UPDATES
+    {
+        Nps64UpdaterInfo uinfo;
+        if(update_modal_visible(&uinfo))library_ui_modal(&uinfo,accent[theme]);
+    }
+#endif
     return;
 #endif
     for(unsigned i=0;i<PAUSE_CHOICES;i++) {
@@ -1064,21 +1113,21 @@ int main(void) {
     nps64_log("NPS64 by lTunix " NPS64_VERSION "; Vulkan; synchronous FullSync; audio recovery; no session cap\n");
 #elif defined(NPS64_GPU_GAME_TEST)
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.57.log");
-    nps64_log("NPS64 Vulkan Game Test 00.57; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; session cap disabled; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.58.log");
+    nps64_log("NPS64 Vulkan Game Test 00.58; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; session cap disabled; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
 #if defined(NPS64_GPU_GAME_TEST)
     nps64_log("[gpu] physical compute probes passed; game workloads still experimental\n");
 #elif defined(NPS64_HLE_GAME)
-    nps64_log("NPS64 00.57 Ari64 / Angrylion + Vulkan game geometry sequence\n");
+    nps64_log("NPS64 00.58 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
-    nps64_log("NPS64 00.57 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
+    nps64_log("NPS64 00.58 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.57 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.58 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.57 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.58 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
@@ -1148,6 +1197,7 @@ int main(void) {
     snprintf(message,sizeof(message),nps64_tr("%zu ROMs encontradas. Selecciona un juego"),game_count);
     nps64_log("[library] startup count=%zu\n",game_count);
 #ifdef NPS64_UPDATES
+    nps64_updater_set_confirm_mode(true);
     nps64_updater_init();
 #endif
 #ifdef NPS64_HD_UI
@@ -1182,10 +1232,13 @@ int main(void) {
         if(pressed) nps64_log("[input] raw=%08x pressed=%04x running=%d paused=%d test=%d\n",pads[0].raw_buttons,pressed,running,paused,input_test);
         double now=platform_time();
         double draw_start=now;
-        if((held&(BTN_UP|BTN_DOWN)) && now>=repeat_at) { pressed|=held&(BTN_UP|BTN_DOWN); repeat_at=now+0.16; }
-        if(!(held&(BTN_UP|BTN_DOWN))) repeat_at=now+0.3;
+        if((held&(BTN_UP|BTN_DOWN|BTN_LEFT|BTN_RIGHT)) && now>=repeat_at) { pressed|=held&(BTN_UP|BTN_DOWN|BTN_LEFT|BTN_RIGHT); repeat_at=now+0.16; }
+        if(!(held&(BTN_UP|BTN_DOWN|BTN_LEFT|BTN_RIGHT))) repeat_at=now+0.3;
         if(cheat_screen){cheats_input(pressed);if(cheat_screen){cheats_draw();goto present_frame;}pressed=0;}
         if(!running) {
+#ifdef NPS64_UPDATES
+            if(update_modal_handle(pressed)){menu_draw();goto present_frame;}
+#endif
             bool was_testing=input_test;
             if(pressed&BTN_HELP) input_test=!input_test;
             if(was_testing && (pressed&BTN_BACK)) input_test=false;
@@ -1238,11 +1291,18 @@ int main(void) {
                 if(pressed&BTN_EXIT)quit_requested=true;
                 if(!running)menu_draw();goto present_frame;
             }
+#ifdef NPS64_HD_UI
+            if(game_count && (pressed&(BTN_UP|BTN_LEFT))) selected=(selected+game_count-1)%game_count;
+            if(game_count && (pressed&(BTN_DOWN|BTN_RIGHT))) selected=(selected+1)%game_count;
+            if(game_count && (pressed&BTN_PREV)) selected=selected>=5?selected-5:0;
+            if(game_count && (pressed&BTN_NEXT)) selected=selected+5<game_count?selected+5:game_count-1;
+#else
             if(pressed&BTN_LEFT){sidebar_focus=true;sidebar_selected=0;menu_draw();goto present_frame;}
             if(game_count && (pressed&BTN_UP)) selected=(selected+game_count-1)%game_count;
             if(game_count && (pressed&BTN_DOWN)) selected=(selected+1)%game_count;
             if(game_count && (pressed&BTN_PREV)) selected=selected>=6?selected-6:0;
             if(game_count && (pressed&BTN_NEXT)) selected=selected+6<game_count?selected+6:game_count-1;
+#endif
 #ifdef NPS64_UPDATES
             if(pressed&BTN_UPDATE) request_updates();
 #endif
@@ -1305,6 +1365,9 @@ int main(void) {
             for(unsigned i=0;i<4;i++) if(connected[i]!=pads[i].connected) { connected[i]=pads[i].connected; retro_set_controller_port_device(i,connected[i]?RETRO_DEVICE_JOYPAD:RETRO_DEVICE_NONE); }
             if(pressed&BTN_PAUSE) { paused=!paused; pause_selected=0; platform_audio_clear(); if(paused) platform_rumble_clear(); }
             if(paused) {
+#ifdef NPS64_UPDATES
+                if(update_modal_handle(pressed))pressed=0;
+#endif
                 if(pressed&BTN_UP) pause_selected=(pause_selected+PAUSE_CHOICES-1)%PAUSE_CHOICES;
                 if(pressed&BTN_DOWN) pause_selected=(pause_selected+1)%PAUSE_CHOICES;
                 if((pressed&BTN_LEFT)&&pause_selected!=PAUSE_CHOICES-3&&pause_selected!=PAUSE_CHOICES-4&&pause_selected!=3) {slot=(slot+7)%8;game_config_save();}

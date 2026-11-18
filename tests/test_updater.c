@@ -71,6 +71,15 @@ int main(void) {
     FILE *file=fopen(TARGET,"r+b");assert(file);fputc(99,file);fclose(file);run(NORMAL,"descargada",true);assert(package_requests==1);unlink(TARGET);
     mkdir(TARGET,0777);mode=NORMAL;nps64_updater_init();char text[160];wait_done(text);nps64_updater_shutdown();assert(strstr(text,"guardar"));assert(access(TARGET ".part",F_OK)!=0);rmdir(TARGET);
     mode=CANCEL;nps64_updater_init();for(unsigned i=0;i<5000;i++){nps64_updater_status(text,sizeof(text),NULL);if(strstr(text,"Descargando"))break;usleep(1000);}assert(strstr(text,"Descargando"));nps64_updater_request();nps64_updater_shutdown();assert(access(TARGET,F_OK)!=0);assert(access(TARGET ".part",F_OK)!=0);
+    /* Confirm mode: detect available release without downloading until confirmed. */
+    make_feed();mode=NORMAL;package_requests=0;nps64_updater_set_confirm_mode(true);
+    nps64_updater_init();wait_done(text);
+    Nps64UpdaterInfo info;nps64_updater_info(&info);
+    assert(info.state==NPS64_UPDATER_AVAILABLE && package_requests==0 && access(TARGET,F_OK)!=0);
+    nps64_updater_confirm();wait_done(text);
+    nps64_updater_info(&info);
+    assert(info.state==NPS64_UPDATER_READY && package_requests==1 && access(TARGET,F_OK)==0);
+    nps64_updater_shutdown();unlink(TARGET);nps64_updater_set_confirm_mode(false);
     /* Current versions report correctly, without creating an installable file. */
     snprintf(feed,sizeof(feed),"[]");run(NORMAL,"ultima version",false);
     rmdir(DIR);puts("PASS: versions, prereleases, hostile/truncated JSON, SHA-256 vectors, offline/rate limits, verified download, reuse, corruption, oversize, rename failure, cancellation");return 0;

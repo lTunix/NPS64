@@ -17,6 +17,11 @@ void nps64_updater_init(void){}
 void nps64_updater_request(void){snprintf(updater_test_text,sizeof updater_test_text,"Checking GitHub for updates...");}
 void nps64_updater_shutdown(void){}
 void nps64_updater_status(char *text,size_t capacity,bool *busy){if(capacity)snprintf(text,capacity,"%s",updater_test_text);if(busy)*busy=false;}
+void nps64_updater_set_confirm_mode(bool enabled){(void)enabled;}
+void nps64_updater_confirm(void){}
+void nps64_updater_dismiss(void){}
+void nps64_updater_cancel(void){}
+void nps64_updater_info(Nps64UpdaterInfo *info){if(info){memset(info,0,sizeof(*info));info->state=NPS64_UPDATER_UP_TO_DATE;snprintf(info->status,sizeof(info->status),"%s",updater_test_text);}}
 #endif
 static unsigned cheat_enables,cheat_disables;
 static int wide_enabled,wide_toggles;
@@ -32,6 +37,8 @@ void covers_init(void){} void covers_shutdown(void){} void covers_refresh(void){
 void covers_set_paused(bool p){covers_paused=p;}
 void covers_request(const Game *g){(void)g;}
 void covers_draw(const Game *g,int x,int y,int w,int h){(void)g;(void)x;(void)y;(void)w;(void)h;}
+const uint32_t *covers_acquire(const Game *g,int *w,int *h,void **handle){(void)g;if(w)*w=0;if(h)*h=0;if(handle)*handle=NULL;return NULL;}
+void covers_release(void *handle){(void)handle;}
 void covers_status(char *s,size_t n){snprintf(s,n,"Caratulas locales");}
 bool platform_init(void){return true;}void platform_shutdown(void){}
 uint32_t *platform_framebuffer(void){return fb;}
@@ -70,9 +77,9 @@ void platform_poll(Input p[4]){
  case 34:p[0].buttons=BTN_CONFIRM;break;
  case 36:assert(!running&&!covers_paused);assert(!strcmp(message,nps64_tr("Partida guardada. Selecciona otro juego")));p[0].buttons=BTN_GAME_SETTINGS;break;
  case 38:assert(!editing_game.aspect&&editing_game.resolution==1);p[0].buttons=BTN_BACK;break;
- case 40:p[0].buttons=BTN_LEFT;break;
- case 42:assert(sidebar_focus);p[0].buttons=BTN_DOWN;break;
- case 44:p[0].buttons=BTN_CONFIRM;break;
+ case 40:p[0].buttons=BTN_UPDATE;break;
+ case 42:assert(settings_page==1&&!sidebar_focus);break;
+ case 44:break;
  case 46:assert(settings_page==1&&!sidebar_focus);assert(preferences.language==NPS64_LANG_ENGLISH);settings_row=8;p[0].buttons=BTN_CONFIRM;break;
  case 48:assert(preferences.language==NPS64_LANG_SPANISH);assert(!strcmp(nps64_tr("Configuracion"),"Configuracion"));screenshot("build/settings-spanish.ppm");{Nps64AppSettings saved;assert(nps64_settings_load(CONFIG_PATH,&saved)&&saved.language==NPS64_LANG_SPANISH);}p[0].buttons=BTN_CONFIRM;break;
  case 50:assert(preferences.language==NPS64_LANG_ENGLISH);assert(!strcmp(nps64_tr("Configuracion"),"Settings"));screenshot("build/settings-english.ppm");settings_page=2;settings_row=7;p[0].buttons=BTN_CONFIRM;break;

@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/lTunix/NPS64/releases/latest"><img src="assets/readme/download-en.svg" alt="Download the latest PKG" height="44"></a>
-  <a href="docs/RELEASE-00.74.md"><img src="assets/readme/notes-en.svg" alt="Release notes" height="44"></a>
+  <a href="docs/RELEASE-00.75.md"><img src="assets/readme/notes-en.svg" alt="Release notes" height="44"></a>
   <a href="https://github.com/lTunix/NPS64/issues"><img src="assets/readme/issue-en.svg" alt="Report an issue" height="44"></a>
   <a href="https://www.paypal.com/donate/?hosted_button_id=XMVFTFEQKX8Q8"><img src="assets/readme/donate-en.svg" alt="Donate with PayPal" height="44"></a>
 </p>
@@ -38,14 +38,14 @@ Compatibility, performance and usability are still improving. Some games may hav
 
 Download the **PKG** file. This link always opens the latest published release. Releases are under development; your testing helps improve them.
 
-## What’s new in 00.74
+## What’s new in 00.75
 
-- Less Vulkan rendering and CPU geometry work, with performance improvements at 2× while retaining effects.
-- Army Men starts with its fast graphics path even when opened first. The latest optimization improves execution, but some scenes still have stutters and FPS drops.
-- Startup corrections for 1080 Snowboarding and Excitebike 64.
-- Fixed the depth/texture flicker observed in Mario Kart 64, particularly Choco Mountain.
-- Missing covers no longer block subsequent downloads; improved Wave Race 64 name matching.
-- Updated icon. [Full release notes](docs/RELEASE-00.74.md).
+- Redesigned library with an animated 3D cartridge carousel, integrated cover art and reflections.
+- Refreshed backgrounds, emblem, action cards, menus and button hints, adapted to English and Spanish.
+- D-pad library navigation and L1/R1 paging, with shortcuts to global and per-game settings.
+- Available updates open a **Download / Later** dialog. Downloads show progress, support cancellation and display completion or retry actions.
+- The PKG is verified before becoming ready in `/data/pkg`; installation remains manual.
+- Retains the emulation improvements from 00.74. [Full release notes](docs/RELEASE-00.75.md).
 
 ### Known remaining work
 
@@ -70,7 +70,7 @@ Games supporting Rumble Pak can vibrate the controller. It is enabled by default
 
 ## Language
 
-The **00.74** interface defaults to **English**. In **Settings → Language**, choose **English** or **Espanol**. Changes take effect immediately and are saved. Existing settings keep their other preferences and initially use English. This changes the NPS64 interface, not the language of your ROMs.
+The **00.75** interface defaults to **English**. In **Settings → Language**, choose **English** or **Espanol**. Changes take effect immediately and are saved. Existing settings keep their other preferences and initially use English. This changes the NPS64 interface, not the language of your ROMs.
 
 
 ## Display settings
