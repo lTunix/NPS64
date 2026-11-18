@@ -1064,21 +1064,21 @@ int main(void) {
     nps64_log("NPS64 by lTunix " NPS64_VERSION "; Vulkan; synchronous FullSync; audio recovery; no session cap\n");
 #elif defined(NPS64_GPU_GAME_TEST)
     nps64_log_init(DATA_ROOT "/vulkan-game-test.log");
-    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.56.log");
-    nps64_log("NPS64 Vulkan Game Test 00.56; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; session cap disabled; hybrid asynchronous shaders; compact logs; isolated title\n");
+    crash_capture_ready=nps64_gpu_crashlog_init(DATA_ROOT "/vulkan-game-crash-00.57.log");
+    nps64_log("NPS64 Vulkan Game Test 00.57; compiler worker 8MiB; cached readback; split RDP; transfer profiling; resource guard; session cap disabled; hybrid asynchronous shaders; compact logs; isolated title\n");
 #else
     nps64_log_init(DATA_ROOT "/nps64.log");
 #endif
 #if defined(NPS64_GPU_GAME_TEST)
     nps64_log("[gpu] physical compute probes passed; game workloads still experimental\n");
 #elif defined(NPS64_HLE_GAME)
-    nps64_log("NPS64 00.56 Ari64 / Angrylion + Vulkan game geometry sequence\n");
+    nps64_log("NPS64 00.57 Ari64 / Angrylion + Vulkan game geometry sequence\n");
 #elif defined(NPS64_GPU_EXPERIMENTAL)
-    nps64_log("NPS64 00.56 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
+    nps64_log("NPS64 00.57 EXPERIMENTAL core 890323d Ari64 / Vulkan color raster\n");
 #elif defined(NPS64_GPU) && defined(__ORBIS__)
-    nps64_log("NPS64 00.56 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
+    nps64_log("NPS64 00.57 core 890323d Ari64 / Vulkan quarantined + Angrylion\n");
 #elif defined(NPS64_GPU)
-    nps64_log("NPS64 00.56 core 890323d Ari64 / Vulkan + Angrylion\n");
+    nps64_log("NPS64 00.57 core 890323d Ari64 / Vulkan + Angrylion\n");
 #else
 #ifdef NPS64_CPU_RDP_PGO
     nps64_log("NPS64 by lTunix " NPS64_VERSION " CPU ONLY core 890323d Ari64 / Angrylion PGO\n");
