@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/readme-icon.png" alt="NPS64 by lTunix" width="300">
+  <img src="assets/readme-icon.jpeg" alt="NPS64 by lTunix" width="300">
 </p>
 
 <h1 align="center">NPS64 by lTunix</h1>
@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/lTunix/NPS64/releases/latest"><img src="assets/readme/download-es.svg" alt="Descargar el ultimo PKG" height="44"></a>
-  <a href="docs/RELEASE-00.73.md"><img src="assets/readme/notes-es.svg" alt="Novedades de la version" height="44"></a>
+  <a href="docs/RELEASE-00.74.md"><img src="assets/readme/notes-es.svg" alt="Novedades de la version" height="44"></a>
   <a href="https://github.com/lTunix/NPS64/issues"><img src="assets/readme/issue-es.svg" alt="Reportar un error" height="44"></a>
   <a href="https://www.paypal.com/donate/?hosted_button_id=XMVFTFEQKX8Q8"><img src="assets/readme/donate-es.svg" alt="Donar con PayPal" height="44"></a>
 </p>
@@ -54,9 +54,25 @@ Los juegos compatibles con Rumble Pak pueden hacer vibrar el mando. Está activa
 
 En la biblioteca, **Options** sale de NPS64; durante la partida conserva su función de Start de Nintendo 64.
 
+## Novedades de 00.74
+
+- Menos trabajo de renderizado Vulkan y de geometría de CPU, con mejoras de rendimiento a 2× sin retirar efectos.
+- Army Men inicia con su ruta gráfica rápida aunque sea el primer juego abierto. La última optimización mejora su ejecución, pero todavía presenta tirones y bajones en algunas escenas.
+- Correcciones de arranque para 1080 Snowboarding y Excitebike 64.
+- Corrección del parpadeo de profundidad/texturas observado en Mario Kart 64, especialmente en Choco Mountain.
+- Las carátulas ausentes ya no bloquean la recuperación de las siguientes; mejor reconocimiento de Wave Race 64.
+- Icono actualizado. [Lista completa de cambios](docs/RELEASE-00.74.md).
+
+### Pendientes conocidos
+
+- **Army Men:** reducir los tirones y bajones que quedan con explosiones y muchos efectos a 2×.
+- **Conker’s Bad Fur Day:** optimizar los bajones de la intro y otras escenas exigentes; no se considera resuelto.
+- **Mario Tennis:** seguir mejorando las repeticiones y partículas a 2×.
+- Continuar las pruebas prolongadas y de más juegos. No se garantizan 60 FPS constantes.
+
 ## Idioma
 
-La **00.73** usa **inglés por defecto**. En **Settings → Language**, elige **English** o **Espanol**; el cambio se aplica inmediatamente y se guarda al cerrar la app. Los ajustes antiguos conservan sus opciones y comienzan en inglés. Este ajuste cambia la interfaz de NPS64, no el idioma de las ROMs.
+La **00.74** usa **inglés por defecto**. En **Settings → Language**, elige **English** o **Espanol**; el cambio se aplica inmediatamente y se guarda al cerrar la app. Los ajustes antiguos conservan sus opciones y comienzan en inglés. Este ajuste cambia la interfaz de NPS64, no el idioma de las ROMs.
 
 
 ## Ajustes de imagen

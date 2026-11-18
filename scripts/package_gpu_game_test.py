@@ -10,7 +10,7 @@ p.add_argument('--public-release',action='store_true')
 p.add_argument('--reference-work',type=Path,required=True)
 p.add_argument('--sdk',type=Path,required=True)
 args=p.parse_args();work=args.reference_work.resolve();sdk=args.sdk.resolve()
-version='00.73' if args.public_release else '00.57'
+version='00.74' if args.public_release else '00.57'
 build=ROOT/'build/gpu-game-test'
 if args.public_release and b'[frame-capture] armed' in (build/'nps64.elf').read_bytes():
     p.error('Frame capture diagnostic ELF cannot be packaged as a public release')
