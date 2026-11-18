@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/readme-icon.png" alt="NPS64 by lTunix" width="300">
+  <img src="assets/readme-icon.jpeg" alt="NPS64 by lTunix" width="300">
 </p>
 
 <h1 align="center">NPS64 by lTunix</h1>
@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/lTunix/NPS64/releases/latest"><img src="assets/readme/download-en.svg" alt="Download the latest PKG" height="44"></a>
-  <a href="docs/RELEASE-00.73.md"><img src="assets/readme/notes-en.svg" alt="Release notes" height="44"></a>
+  <a href="docs/RELEASE-00.74.md"><img src="assets/readme/notes-en.svg" alt="Release notes" height="44"></a>
   <a href="https://github.com/lTunix/NPS64/issues"><img src="assets/readme/issue-en.svg" alt="Report an issue" height="44"></a>
   <a href="https://www.paypal.com/donate/?hosted_button_id=XMVFTFEQKX8Q8"><img src="assets/readme/donate-en.svg" alt="Donate with PayPal" height="44"></a>
 </p>
@@ -38,6 +38,22 @@ Compatibility, performance and usability are still improving. Some games may hav
 
 Download the **PKG** file. This link always opens the latest published release. Releases are under development; your testing helps improve them.
 
+## What’s new in 00.74
+
+- Less Vulkan rendering and CPU geometry work, with performance improvements at 2× while retaining effects.
+- Army Men starts with its fast graphics path even when opened first. The latest optimization improves execution, but some scenes still have stutters and FPS drops.
+- Startup corrections for 1080 Snowboarding and Excitebike 64.
+- Fixed the depth/texture flicker observed in Mario Kart 64, particularly Choco Mountain.
+- Missing covers no longer block subsequent downloads; improved Wave Race 64 name matching.
+- Updated icon. [Full release notes](docs/RELEASE-00.74.md).
+
+### Known remaining work
+
+- **Army Men:** reduce remaining stutters and drops with explosions and many effects at 2×.
+- **Conker’s Bad Fur Day:** optimize the intro and other demanding scenes; its performance issue remains open.
+- **Mario Tennis:** further improve replays and particles at 2×.
+- Continue longer sessions and testing across more games. Constant 60 FPS is not guaranteed.
+
 ## Getting started
 
 1. Install the PKG on a PS4 configured to run community applications.
@@ -54,7 +70,7 @@ Games supporting Rumble Pak can vibrate the controller. It is enabled by default
 
 ## Language
 
-The **00.73** interface defaults to **English**. In **Settings → Language**, choose **English** or **Espanol**. Changes take effect immediately and are saved. Existing settings keep their other preferences and initially use English. This changes the NPS64 interface, not the language of your ROMs.
+The **00.74** interface defaults to **English**. In **Settings → Language**, choose **English** or **Espanol**. Changes take effect immediately and are saved. Existing settings keep their other preferences and initially use English. This changes the NPS64 interface, not the language of your ROMs.
 
 
 ## Display settings
