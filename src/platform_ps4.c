@@ -1,3 +1,6 @@
+#ifdef NPS64_FRAME_CAPTURE_TEST
+#include "frame_capture.h"
+#endif
 #include "platform.h"
 #include "input_ps4.h"
 #include "log.h"
@@ -335,6 +338,13 @@ bool platform_present(void) {
     __asm__ volatile("sfence" ::: "memory");
 #else
     unsigned flip_buffer=(unsigned)active;
+#endif
+#ifdef NPS64_FRAME_CAPTURE_TEST
+#ifdef NPS64_GPU_PRESENT_TEST
+    nps64_frame_capture_after(external?canvas:buffers[active]);
+#else
+    nps64_frame_capture_after(buffers[active]);
+#endif
 #endif
     if(sceVideoOutSubmitFlip(video,flip_buffer,ORBIS_VIDEO_OUT_FLIP_VSYNC,frame)<0) return false;
 #ifdef NPS64_GPU_PRESENT_TEST

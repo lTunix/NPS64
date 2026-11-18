@@ -73,3 +73,6 @@ Thumbs.db
 
 # Deliberately tracked: assets/*.profdata, the font and embedded shader headers.
 # These small inputs are required to reproduce the published CPU/GPU builds.
+
+# Local agent handoff: workspace context and PS4 access details.
+/CONTEXTO-AGENTES-LOCAL.md
